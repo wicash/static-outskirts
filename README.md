@@ -29,6 +29,7 @@ This is the first small test scene, built in **Godot 4.4** (MIT licensed).
 | V | Switch first / third person |
 | F | Torch on / off |
 | T | Skip an hour (for testing) |
+| G | Check the Geiger counter (once you've picked it up) |
 | A / D or mouse wheel | Turn the radio dial (Shift for fine tuning) |
 | Esc | Free the mouse |
 
@@ -58,9 +59,39 @@ small story inside.
 - **Five detailed cars** with see-through windows and furnished interiors.
 - **Nature:** dead grass, bushes, bare trees, a dark pine forest to the north
   with a blinking radio tower, and the hazy city to the south.
-- **Biscuit** walks, sits and looks around. **Sam** is a small girl in an
-  oversized yellow raincoat, red wellies, a teal pompom beanie and two braids,
-  animated in third person. Footsteps and wind are generated in code for now.
+- **Biscuit** walks, sits and looks around. **Sam** has an anime-style look: a
+  painted face with big shiny eyes and blush, spiky bangs, two braids and a
+  cowlick poking out of her teal pompom beanie, an oversized yellow raincoat and
+  red wellies. Animated in third person. Footsteps and wind are generated in code for now.
+
+## Signs of the strikes
+
+All in `scripts/aftermath.gd`. The city (and the flash) was to the south.
+
+- **The flash:** a garden wall at the empty lot bleached pale except for the
+  shadow of a person walking a bicycle and a ladder; blistered paint on the
+  sides of houses that faced the city.
+- **The blast wind:** trees and power poles leaning north, snapped trunks,
+  roof tiles on the lawns, glass on the pavements, windows blown in. Your
+  house has one window taped in an X and one covered in plastic sheeting.
+- **Fallout:** grey ash drifted in the gutters and against fences, dead birds,
+  a melted wheelie bin.
+- **The days after:** government leaflets ("tune to 104.1"), sandbags, search
+  team X marks on doors, an abandoned decontamination tent with a clipboard,
+  a radiation warning sign, the Bells' garden shelter with a tally of days,
+  a memorial on Mr. Lindqvist's fence, a dog lead on a lamppost, HELP painted
+  on the road, chalk hopscotch and three suns.
+- **The strange:** crows on the wires all facing the tower, pale moths around
+  the one working light at night, little flowers that only open and glow after
+  dark, the city still smoking with an orange glow at night.
+- **Geiger counter:** on the crate in your kitchen. Once you pick it up it
+  ticks, faster near hot spots (the crashed car, the decon tubs, the forest).
+
+![Flash shadow](docs/aftermath/flash-shadow.png)
+![Night flowers](docs/aftermath/night-flowers.png)
+![HELP on the road](docs/aftermath/help-on-road.png)
+![Decontamination tent](docs/aftermath/decon-tent.png)
+![Sam](docs/aftermath/sam-anime.png)
 
 ## Time, sleep and the radio
 
@@ -105,5 +136,5 @@ things around while we find the feel. Real models can replace them later.
 ## Screenshots from the command line
 
 ```
-godot --path . -- --shot=out.png [--home | --kitchen | --bedroom | --yourhouse | --okafor | --street | --lot | --busstop | --cat | --car | --crash | --van | --road] [--third | --face] [--dusk | --night] [--torch] [--tuning]
+godot --path . -- --shot=out.png [--home | --kitchen | --bedroom | --yourhouse | --okafor | --street | --lot | --busstop | --cat | --car | --crash | --van | --road | --flash | --decon | --help | --memorial | --wires | --shelter] [--third | --face [--close]] [--dusk | --night] [--torch] [--tuning]
 ```

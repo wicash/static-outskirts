@@ -64,7 +64,8 @@ func _poles_and_wires() -> void:
 	for x in range(-35, 36, 14):
 		var lean := k.rng.randf_range(-5, 5)
 		var pole := k.group(world, Vector3(x, 0, -5.4), 0)
-		pole.rotation_degrees.z = lean
+		pole.rotation_degrees.z = lean * 0.4
+		pole.rotation_degrees.x = -absf(lean) - 1.5  # pushed north by the blast
 		k.cyl(pole, 0.14, 7.5, Vector3(0, 3.75, 0), Color(0.3, 0.24, 0.18), {"sides": 6, "solid": true})
 		k.box(pole, Vector3(0.12, 0.12, 2.0), Vector3(0, 7.0, 0), Color(0.3, 0.24, 0.18))
 		for z in [-0.85, 0.0, 0.85]:
@@ -159,9 +160,17 @@ func _front_yard(lot: Dictionary) -> void:
 				Color(0.32, 0.36, 0.25).lerp(Color(0.42, 0.38, 0.28), k.rng.randf()), {"sides": 6})
 
 
-func _bin(pos: Vector3, turn: float, color: Color, tipped := false) -> void:
+func _bin(pos: Vector3, turn: float, color: Color, tipped := false, melted := false) -> void:
 	var g := k.group(world, pos, turn)
 	var body := k.group(g)
+	if melted:
+		# The plastic sagged in the heat and set again, slumped toward the city.
+		body.scale = Vector3(1.1, 0.72, 1.0)
+		body.rotation_degrees = Vector3(-6, 0, 9)
+		for i in 4:
+			k.cyl(g, 0.04, k.rng.randf_range(0.15, 0.4), Vector3(-0.25 + i * 0.16, 0.6, -0.36), color.darkened(0.1), {"sides": 4})  # drips
+		k.box(g, Vector3(0.66, 0.05, 0.4), Vector3(0, 0.62, -0.5), color.darkened(0.15), {"rot": Vector3(-60, 0, 0)})  # drooping lid
+		k.ball(g, Vector3(0.9, 0.06, 0.8), Vector3(0, 0.03, -0.05), color.darkened(0.25))  # puddle of plastic
 	k.box(body, Vector3(0.6, 1.0, 0.7), Vector3(0, 0.55, 0), color)
 	k.box(body, Vector3(0.64, 0.06, 0.74), Vector3(0, 1.08, 0.0), color.darkened(0.15))
 	for s in [-0.25, 0.25]:
@@ -177,7 +186,7 @@ func _bin(pos: Vector3, turn: float, color: Color, tipped := false) -> void:
 
 func _street_furniture() -> void:
 	_bin(Vector3(-2.3, 0, -5.0), 180, Color(0.2, 0.35, 0.25))
-	_bin(Vector3(14.0, 0, -5.0), 170, Color(0.3, 0.3, 0.32))
+	_bin(Vector3(14.0, 0, -5.0), 170, Color(0.3, 0.3, 0.32), false, true)
 	_bin(Vector3(13.2, 0, -5.0), 185, Color(0.2, 0.35, 0.25), true)
 	_bin(Vector3(-28.0, 0, 5.0), 0, Color(0.3, 0.3, 0.32))
 	_bin(Vector3(18.5, 0, 5.0), 10, Color(0.45, 0.3, 0.2), true)
@@ -274,7 +283,10 @@ func _grass(lots: Array) -> void:
 
 
 func _dead_tree(pos: Vector3, tall: float, color := Color(0.3, 0.25, 0.2)) -> void:
-	var g := k.group(world, pos, k.rng.randf() * 360)
+	# Every tree leans a little north, away from the city.
+	var lean := k.group(world, pos, 0)
+	lean.rotation_degrees.x = -k.rng.randf_range(4, 12)
+	var g := k.group(lean, Vector3.ZERO, k.rng.randf() * 360)
 	k.cyl(g, 0.16 * tall / 5.0, tall * 0.6, Vector3(0, tall * 0.3, 0), color, {"top": 0.1 * tall / 5.0, "sides": 6, "solid": true})
 	for i in 5:
 		var a := i * TAU / 5.0 + k.rng.randf()

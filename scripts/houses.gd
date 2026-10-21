@@ -7,6 +7,7 @@ const Kit := preload("res://scripts/kit.gd")
 const Furniture := preload("res://scripts/furniture.gd")
 const Radio := preload("res://scripts/radio.gd")
 const Bed := preload("res://scripts/bed.gd")
+const GeigerItem := preload("res://scripts/geiger_item.gd")
 
 const T := 0.2          # wall thickness
 const DOOR_W := 1.0
@@ -131,6 +132,22 @@ func _window(g: Node3D, cx: float, w: float, b: float, top: float, state: String
 	match state:
 		"ok":
 			k.pane(g, Vector3(w - 0.08, hh - 0.08, 0.015), Vector3(cx, cy, 0))
+		"taped":
+			# Taped in an X, like the leaflets said.
+			k.pane(g, Vector3(w - 0.08, hh - 0.08, 0.015), Vector3(cx, cy, 0))
+			var tape := Color(0.82, 0.76, 0.55)
+			for s in [-1.0, 1.0]:
+				k.beam(g, Vector3(cx - w / 2.0 + 0.08, b + 0.08, out * 0.0 + s * 0.012), Vector3(cx + w / 2.0 - 0.08, top - 0.08, s * 0.012), 0.045, tape, {"depth": 0.004})
+				k.beam(g, Vector3(cx - w / 2.0 + 0.08, top - 0.08, s * 0.012), Vector3(cx + w / 2.0 - 0.08, b + 0.08, s * 0.012), 0.045, tape, {"depth": 0.004})
+		"sheeted":
+			# Blown in, then covered with plastic sheeting and tape.
+			k.pane(g, Vector3(w - 0.06, hh - 0.06, 0.015), Vector3(cx, cy, out + 0.01), Vector3.ZERO, 0.95)
+			var tape2 := Color(0.25, 0.45, 0.65)
+			k.box(g, Vector3(w, 0.05, 0.01), Vector3(cx, top - 0.05, out + 0.025), tape2)
+			k.box(g, Vector3(w, 0.05, 0.01), Vector3(cx, b + 0.05, out + 0.025), tape2)
+			for s in [-1.0, 1.0]:
+				k.box(g, Vector3(0.05, hh, 0.01), Vector3(cx + s * (w / 2.0 - 0.05), cy, out + 0.025), tape2)
+			f.shards(g, Vector3(cx, 0, -0.5), 0.4)
 		"broken":
 			k.quad(g, Vector3(cx - w / 2.0 + 0.04, b + 0.04, 0), Vector3(cx + w / 2.0 - 0.04, b + 0.04, 0),
 				Vector3(cx + w / 2.0 - 0.04, b + hh * 0.3, 0), Vector3(cx - w * 0.1, b + hh * 0.55, 0), k.glass_mat(0.5))
@@ -244,7 +261,7 @@ func your_house(parent: Node, pos: Vector3) -> Node3D:
 		"walls": Color(0.72, 0.64, 0.52), "inside": Color(0.8, 0.72, 0.58), "roof": Color(0.42, 0.24, 0.2),
 		"door_x": 0.6, "door": "open", "door_color": Color(0.3, 0.42, 0.38), "number": "4",
 		"partition": [-1.4, 1.8],
-		"windows": [["front", -2.6, "ok", Kit.FABRIC_BLUE], ["front", 2.6, "ok", Kit.FABRIC_MUSTARD],
+		"windows": [["front", -2.6, "taped", Kit.FABRIC_BLUE], ["front", 2.6, "sheeted", Kit.FABRIC_MUSTARD],
 			["back", 1.9, "ok", null, "high"], ["left", -1.0, "boarded", null], ["right", 1.4, "ok", Kit.FABRIC_MUSTARD]],
 	})
 
@@ -273,6 +290,11 @@ func your_house(parent: Node, pos: Vector3) -> Node3D:
 	f.fridge(h, Vector3(3.5, 0, -3.05), 0)
 	f.plant(h, Vector3(2.9, 0.9, -3.15), true, 0.8)
 	f.crate(h, Vector3(3.45, 0, -2.1), 10)
+	var geiger := k.thing(h, Vector3(0.3, 0.2, 0.3), Vector3(3.45, 0.47, -2.1), "Pick up the Geiger counter", [], GeigerItem)
+	k.box(geiger, Vector3(0.22, 0.12, 0.14), Vector3(0, 0, 0), Color(0.9, 0.75, 0.15))
+	k.box(geiger, Vector3(0.1, 0.06, 0.01), Vector3(-0.04, 0.02, 0.071), Color(0.75, 0.8, 0.6), {"glow": 0.4})  # dial
+	k.cyl(geiger, 0.025, 0.2, Vector3(0.0, -0.02, -0.12), Color(0.15, 0.15, 0.15), {"rot": Vector3(0, 0, 90), "sides": 5})  # probe
+	k.beam(geiger, Vector3(-0.1, 0.06, 0), Vector3(0.1, 0.06, 0), 0.02, Color(0.2, 0.2, 0.2))  # handle
 	for i in 5:
 		k.cyl(h, 0.04, 0.1, Vector3(3.3 + (i % 3) * 0.1, 0.45, -2.2 + (i / 3) * 0.1), Color(0.7, 0.3, 0.2) if i % 2 else Color(0.7, 0.7, 0.68), {"sides": 6})
 	for i in 3:
@@ -345,7 +367,7 @@ func okafor_house(parent: Node, pos: Vector3) -> Node3D:
 		"walls": Color(0.58, 0.64, 0.68), "inside": Color(0.76, 0.68, 0.6), "roof": Color(0.3, 0.3, 0.34),
 		"door_x": 0.0, "door": "open", "door_color": Color(0.55, 0.15, 0.15), "number": "6",
 		"partition": [1.6, -1.8], "floor": Color(0.55, 0.42, 0.3),
-		"windows": [["front", -2.5, "ok", Kit.FABRIC_RED], ["front", 2.7, "ok", Kit.FABRIC_RED],
+		"windows": [["front", -2.5, "broken", Kit.FABRIC_RED], ["front", 2.7, "taped", Kit.FABRIC_RED],
 			["back", -1.5, "ok", null, "high"], ["left", 0.0, "ok", Kit.FABRIC_RED], ["right", 1.5, "ok", null]],
 	})
 	# Living room.
@@ -497,7 +519,7 @@ func patel_house(parent: Node, pos: Vector3) -> Node3D:
 	var h := shell(parent, pos, {
 		"walls": Color(0.6, 0.63, 0.55), "inside": Color(0.78, 0.76, 0.7), "roof": Color(0.32, 0.26, 0.24),
 		"door_x": -0.5, "door": "closed", "door_color": Color(0.22, 0.25, 0.22), "number": "8",
-		"windows": [["front", -2.7, "ok", Color(0.85, 0.82, 0.72)], ["front", 2.2, "ok", null],
+		"windows": [["front", -2.7, "taped", Color(0.85, 0.82, 0.72)], ["front", 2.2, "taped", null],
 			["back", 0.0, "ok", null], ["left", 0.0, "ok", null], ["right", -1.0, "ok", null]],
 	})
 	k.thing(h, Vector3(1.0, 2.1, 0.3), Vector3(-0.5, 1.05, 3.6), "Try the door", [

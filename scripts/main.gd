@@ -13,6 +13,8 @@ const Street := preload("res://scripts/street.gd")
 const Survivor := preload("res://scripts/survivor.gd")
 const DayNight := preload("res://scripts/daynight.gd")
 const RadioDial := preload("res://scripts/radio_dial.gd")
+const Aftermath := preload("res://scripts/aftermath.gd")
+const Geiger := preload("res://scripts/geiger.gd")
 
 ## How many screen pixels make up one game pixel. Bigger = chunkier.
 const PIXEL_SIZE := 2
@@ -30,6 +32,7 @@ var _dial: Control
 var _fade: ColorRect
 var clock: Node
 var _radio: Node = null  # the radio being tuned, if any
+var _geiger: Node3D = null
 
 
 func _ready() -> void:
@@ -43,6 +46,7 @@ func _ready() -> void:
 	_build_cars()
 	_spawn_player(Vector3(0.6, 0.1, -10.5), PI)
 	_spawn_cat(Vector3(1.5, 0, -6.8))
+	clock.refresh_night_things()
 	_start_wind()
 	_maybe_take_screenshot()
 
@@ -60,6 +64,7 @@ func _setup_input() -> void:
 		"toggle_view": [KEY_V],
 		"torch": [KEY_F],
 		"skip_hour": [KEY_T],
+		"geiger": [KEY_G],
 	}
 	for action in keys:
 		if not InputMap.has_action(action):
@@ -201,6 +206,7 @@ func _build_alder_street() -> void:
 		{"x": -15.0, "z": 12.0, "door": -15.0, "number": "5", "fence_color": Color(0.2, 0.18, 0.16)},
 		{"x": 16.0, "z": 12.0, "door": 16.0, "number": "7"},
 	])
+	Aftermath.new(kit, world).build()
 
 
 func _build_cars() -> void:
@@ -390,6 +396,12 @@ func stop_tuning() -> void:
 	player.frozen = false
 
 
+## Called when you pick up the Geiger counter in your kitchen.
+func pick_up_geiger() -> void:
+	_geiger = Geiger.new()
+	player.add_child(_geiger)
+
+
 ## Called by your bed in the evening: fade out, sleep, wake up at 7.
 func sleep() -> void:
 	player.frozen = true
@@ -448,6 +460,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			stop_tuning()
 			get_viewport().set_input_as_handled()
 			return
+	if event.is_action_pressed("geiger") and _geiger:
+		_show_message(_geiger.reading())
 	if event.is_action_pressed("skip_hour") and _radio == null:
 		clock.skip(1.0)
 		_show_message("You let an hour slip by. " + clock.clock_text().split("   ")[1])
@@ -486,6 +500,12 @@ func _maybe_take_screenshot() -> void:
 		"--van": [Vector3(19.5, 0.1, 6.0), -0.75, 40.0],
 		"--cat": [Vector3(1.5, 0.1, -4.6), 0.0, 120.0],
 		"--road": [Vector3(-6, 0.1, -1.0), -1.4, -12.0],
+		"--flash": [Vector3(-16, 0.1, -10.5), 0.0, 5.0],
+		"--decon": [Vector3(40.5, 0.1, -3.5), 0.15, -5.0],
+		"--help": [Vector3(-12.5, 3.0, 5.0), -0.3, 220.0],
+		"--memorial": [Vector3(-14, 0.1, 2.5), PI + 0.3, -20.0],
+		"--wires": [Vector3(0, 0.1, -1.0), 0.6, 35.0],
+		"--shelter": [Vector3(-29, 0.1, 16.5), PI + 0.2, -15.0],
 	}
 	for key in views:
 		if key in args:
@@ -497,7 +517,7 @@ func _maybe_take_screenshot() -> void:
 	if "--night" in args:
 		clock.hour = 22.5
 	clock.running = false
-	clock.apply()
+	clock.refresh_night_things()
 	if "--torch" in args:
 		player.torch.visible = true
 	if "--tuning" in args:
@@ -509,7 +529,7 @@ func _maybe_take_screenshot() -> void:
 	if "--face" in args:
 		# Turn Sam around to face the camera, for character close-ups.
 		player.body.rotation.y = PI
-		player.arm.spring_length = 2.0
+		player.arm.spring_length = 2.0 if not "--close" in args else 0.9
 		player.camera.h_offset = 0.0
 	for i in 30:
 		await get_tree().process_frame

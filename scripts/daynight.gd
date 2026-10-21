@@ -23,6 +23,7 @@ var hour := 15.0
 var running := true
 var env: Environment
 var sun: DirectionalLight3D
+var _was_night := -1
 
 
 func _ready() -> void:
@@ -70,7 +71,17 @@ func skip(hours: float) -> void:
 	apply()
 
 
+## Shows things in the "night_only" group after dusk (moths, glowing flowers).
+func refresh_night_things() -> void:
+	_was_night = -1
+	apply()
+
+
 func apply() -> void:
+	var dark := 1 if (hour >= 19.6 or hour < 5.6) else 0
+	if dark != _was_night and is_inside_tree():
+		_was_night = dark
+		get_tree().call_group("night_only", "set_visible", dark == 1)
 	var a: Array = KEYS[0]
 	var b: Array = KEYS[1]
 	for i in KEYS.size() - 1:
