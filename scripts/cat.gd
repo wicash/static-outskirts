@@ -87,6 +87,31 @@ func come_eat(bowl: Vector3) -> void:
 	_eating = 0.0
 
 
+var moved_in := false
+
+
+func collar_on() -> bool:
+	return _collar.visible
+
+
+## Used when loading a saved game.
+func restore(t: int, inside: bool, collar: bool) -> void:
+	trust = t
+	if _pet:
+		_pet.times_used = t
+	if inside:
+		_move_in()
+		global_position = home
+	_collar.visible = collar
+
+
+func _move_in() -> void:
+	# Biscuit has decided your house is his house now.
+	moved_in = true
+	home = Vector3(2.0, 0, -9.15)
+	_home_radius = 0.8
+
+
 ## Called from the backpack once Biscuit trusts you enough.
 func wear_collar() -> void:
 	_collar.visible = true
@@ -125,9 +150,7 @@ func _process(delta: float) -> void:
 		if _eating <= 0.0:
 			_bump_trust()
 			get_tree().call_group("cat_bowl", "eaten")
-			# Biscuit has decided your house is his house now.
-			home = Vector3(2.0, 0, -9.15)
-			_home_radius = 0.8
+			_move_in()
 	elif trust == 0 and dist < 1.8:
 		# Too shy: back away from the player.
 		_target = global_position - to_player.normalized() * 2.0

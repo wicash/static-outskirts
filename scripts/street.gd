@@ -378,6 +378,7 @@ func _skyline() -> void:
 
 func _ash() -> void:
 	var ash := CPUParticles3D.new()
+	ash.add_to_group("ash")
 	ash.amount = 600
 	ash.lifetime = 18.0
 	ash.preprocess = 18.0

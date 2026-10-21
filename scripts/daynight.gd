@@ -25,6 +25,12 @@ var env: Environment
 var sun: DirectionalLight3D
 var _was_night := -1
 
+## Set by weather.gd: grey-ish fog tint, how far you can see, how bright it is.
+var fog_tint := Color(0.5, 0.5, 0.5)
+var fog_tint_amount := 0.0
+var fog_mult := 1.0
+var light_mult := 1.0
+
 
 func _ready() -> void:
 	add_to_group("clock")
@@ -91,15 +97,18 @@ func apply() -> void:
 			break
 	var t := smoothstep(0.0, 1.0, (hour - a[0]) / maxf(b[0] - a[0], 0.001))
 	var fog: Color = (a[1] as Color).lerp(b[1], t)
+	# Weather tints the fog toward its own colour, keeping night dark.
+	var tint := Color(fog_tint.r * fog.v * 1.6, fog_tint.g * fog.v * 1.6, fog_tint.b * fog.v * 1.6)
+	fog = fog.lerp(tint, fog_tint_amount)
 	RenderingServer.global_shader_parameter_set("world_fog", fog)
-	RenderingServer.global_shader_parameter_set("fog_scale", lerpf(a[6], b[6], t))
+	RenderingServer.global_shader_parameter_set("fog_scale", lerpf(a[6], b[6], t) * fog_mult)
 	if env:
 		env.background_color = fog
 		env.ambient_light_color = (a[4] as Color).lerp(b[4], t)
-		env.ambient_light_energy = lerpf(a[5], b[5], t)
+		env.ambient_light_energy = lerpf(a[5], b[5], t) * lerpf(1.0, light_mult, 0.6)
 	if sun:
 		sun.light_color = (a[2] as Color).lerp(b[2], t)
-		sun.light_energy = lerpf(a[3], b[3], t)
+		sun.light_energy = lerpf(a[3], b[3], t) * light_mult
 		# The sun crosses from east to west; at night the same light is a low moon.
 		var day_t := clampf((hour - 6.0) / 13.0, 0.0, 1.0)
 		var up := sin(day_t * PI)

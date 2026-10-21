@@ -17,6 +17,9 @@ const Aftermath := preload("res://scripts/aftermath.gd")
 const Geiger := preload("res://scripts/geiger.gd")
 const Items := preload("res://scripts/items.gd")
 const Paper := preload("res://scripts/paper.gd")
+const Weather := preload("res://scripts/weather.gd")
+const SaveGame := preload("res://scripts/save_game.gd")
+const Title := preload("res://scripts/title.gd")
 
 ## How many screen pixels make up one game pixel. Bigger = chunkier.
 const PIXEL_SIZE := 2
@@ -36,6 +39,9 @@ var clock: Node
 var _radio: Node = null  # the radio being tuned, if any
 var _geiger: Node3D = null
 var cat: Node3D
+var weather: Node
+var _comfort_label: Label
+var _title: Control
 
 # What Sam carries and what she has written down.
 var inventory := {}            # item id -> count
@@ -72,11 +78,22 @@ func _ready() -> void:
 	_build_cars()
 	_spawn_player(Vector3(0.6, 0.1, -10.5), PI)
 	_spawn_cat(Vector3(1.5, 0, -6.8))
+	weather = Weather.new()
+	weather.clock = clock
+	weather.player = player
+	add_child(weather)
+	weather.set_day(clock.day)
 	clock.refresh_night_things()
 	_start_wind()
-	_maybe_take_screenshot()
-	if "--selftest" in OS.get_cmdline_user_args():
+	var args := OS.get_cmdline_user_args()
+	if "--selftest" in args:
 		_selftest()
+	elif "--loadtest" in args:
+		_loadtest()
+	elif Array(args).any(func(a): return a.begins_with("--shot=")):
+		_maybe_take_screenshot()
+	else:
+		_show_title()
 
 
 # --- Setup -------------------------------------------------------------------
@@ -146,15 +163,22 @@ func _setup_hud() -> void:
 	_message.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
-	_hint = _label(hud, 16)
+	_hint = _label(hud, 14)
 	_hint.position = Vector2(20, 16)
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_hint.text = "Click to look around   WASD move   Shift run   E interact   V switch view   F torch   Tab backpack   J journal   T skip an hour   Esc free mouse"
+	_hint.text = "Click to look   WASD move   Shift run   E use   V view   F torch   Tab backpack   J journal   T skip hour"
 
 	_journal_hint = _label(hud, 16)
 	_journal_hint.position = Vector2(20, 44)
 	_journal_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	_journal_hint.modulate.a = 0.0
+
+	_comfort_label = _label(hud, 16)
+	_comfort_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_comfort_label.offset_left = -260
+	_comfort_label.offset_right = -20
+	_comfort_label.offset_top = 42
+	_comfort_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 
 	_paper = Paper.new()
 	hud.add_child(_paper)
@@ -446,23 +470,96 @@ func sleep() -> void:
 	var t := create_tween()
 	t.tween_property(_fade, "color:a", 1.0, 1.5)
 	await t.finished
+	var cozy := comfort()
 	clock.sleep_until_morning()
-	write_journal("Slept. Woke up on day %d." % clock.day)
+	weather.set_day(clock.day)
+	write_journal("Slept. Woke up on day %d. %s" % [clock.day, weather.label()])
+	SaveGame.save(self)
 	await get_tree().create_timer(1.0).timeout
-	_show_message(_morning_line(clock.day))
+	_show_message(_morning_line(clock.day, cozy) + "  (Saved)")
 	var t2 := create_tween()
 	t2.tween_property(_fade, "color:a", 0.0, 2.0)
 	await t2.finished
 	player.frozen = false
 
 
-func _morning_line(day: int) -> String:
-	var lines := [
-		"Morning. Biscuit is asleep on your feet, which explains the dream about sandbags.",
-		"Morning. Grey light, cold floor. The kettle first, then everything else.",
-		"Morning. You dreamt the radio was saying your name.",
-	]
-	return "Day %d. " % day + lines[(day - 2) % lines.size()]
+func _morning_line(day: int, cozy: int) -> String:
+	var night := "Cold night. The house still feels borrowed."
+	if cozy >= 5:
+		night = "A warm night. Biscuit snoring on your feet. You slept like you used to."
+	elif cozy >= 3:
+		night = "You slept better. The candles burnt down to stubs, and you didn't dream."
+	elif cozy >= 1:
+		night = "You woke twice, listening. Nothing. Just the house settling."
+	return "Day %d. %s %s" % [day, night, weather.morning_line()]
+
+
+# --- Home comfort ----------------------------------------------------------------
+
+## How cozy your house is right now: lit candles, Biscuit living in,
+## tea today, and music on the radio.
+func comfort() -> int:
+	var c := 0
+	for spot in get_tree().get_nodes_in_group("candle_spot"):
+		if spot.lit:
+			c += 1
+	if cat and cat.moved_in:
+		c += 1
+	var kettle := get_tree().get_first_node_in_group("kettle")
+	if kettle and kettle.tea_day == clock.day:
+		c += 1
+	var radio := get_tree().get_first_node_in_group("radio")
+	if radio and radio.on and absf(radio.freq - 96.4) < 0.3:
+		c += 1
+	return c
+
+
+func _comfort_text() -> String:
+	var c := comfort()
+	var words := ["chilly", "chilly", "a bit better", "getting there", "cozy", "cozy", "home"]
+	var dots := mini(5, ceili(c * 5.0 / 8.0))
+	return "Home  " + "●".repeat(dots) + "○".repeat(5 - dots) + "  " + words[mini(c, 6)]
+
+
+func _in_your_house() -> bool:
+	var p := player.global_position
+	return absf(p.x) < 4.0 and p.z < -8.5 and p.z > -15.5
+
+
+# --- Title -------------------------------------------------------------------------
+
+func _show_title() -> void:
+	_title = Title.new()
+	_hint.visible = false
+	_clock_label.visible = false
+	_comfort_label.visible = false
+	player.frozen = true
+	clock.running = false
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	_paper.get_parent().add_child(_title)
+	_title.chosen.connect(_on_title)
+
+
+func _on_title(choice: String) -> void:
+	if choice == "quit":
+		get_tree().quit()
+		return
+	if choice == "continue":
+		SaveGame.load_into(self)
+		weather.set_day(clock.day)
+		clock.refresh_night_things()
+	_title.queue_free()
+	_title = null
+	_hint.visible = true
+	_clock_label.visible = true
+	_comfort_label.visible = true
+	player.frozen = false
+	clock.running = true
+	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+	if choice == "continue":
+		_show_message("Day %d. %s" % [clock.day, weather.morning_line()])
+	else:
+		_show_message("Day 1. Home, finally. The house is cold and Biscuit's bowl is empty. Grace next door would know where the food is.")
 
 
 # --- Per-frame ---------------------------------------------------------------
@@ -634,7 +731,8 @@ func _show_message(text: String) -> void:
 func _process(delta: float) -> void:
 	_fill_wind()
 	_update_tape(delta)
-	_clock_label.text = clock.clock_text()
+	_clock_label.text = clock.clock_text() + ("   " + weather.label() if weather else "")
+	_comfort_label.text = _comfort_text() if _in_your_house() else ""
 	if _radio:
 		var speed := 0.5 if Input.is_action_pressed("run") else 2.5
 		_radio.turn(Input.get_axis("move_left", "move_right") * speed * delta)
@@ -648,6 +746,8 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _title:
+		return
 	if _paper_mode != "":
 		if event.is_action_pressed("ui_cancel") or (event.is_action_pressed("journal") and _paper_mode == "journal") \
 				or (event.is_action_pressed("backpack") and _paper_mode == "backpack"):
@@ -708,6 +808,20 @@ func _selftest() -> void:
 	_close_paper()
 	_play_tape()
 	print("journal: ", journal_entries)
+	for spot in get_tree().get_nodes_in_group("candle_spot"):
+		print("candle -> ", spot.interact())
+	print("comfort ", comfort(), " ", _comfort_text())
+	SaveGame.save(self)
+	print("saved")
+	get_tree().quit()
+
+
+func _loadtest() -> void:
+	await get_tree().process_frame
+	print("load -> ", SaveGame.load_into(self))
+	print("day ", clock.day, " inventory ", inventory)
+	print("cat trust ", cat.trust, " inside ", cat.moved_in, " comfort ", comfort())
+	print("journal lines ", journal_entries.size(), " geiger ", _geiger != null)
 	get_tree().quit()
 
 
@@ -751,6 +865,15 @@ func _maybe_take_screenshot() -> void:
 			player.position = views[key][0]
 			player.rotation.y = views[key][1]
 			player.look(Vector2(0, views[key][2]))
+	if "--rain" in args:
+		weather.set_kind("rain")
+	if "--ashfall" in args:
+		weather.set_kind("ash")
+	if "--title" in args:
+		_show_title()
+	if "--candles" in args:
+		for spot in get_tree().get_nodes_in_group("candle_spot"):
+			spot.light()
 	if "--dusk" in args:
 		clock.hour = 18.6
 	if "--night" in args:

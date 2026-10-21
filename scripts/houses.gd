@@ -9,6 +9,8 @@ const Radio := preload("res://scripts/radio.gd")
 const Bed := preload("res://scripts/bed.gd")
 const GeigerItem := preload("res://scripts/geiger_item.gd")
 const FeedBowl := preload("res://scripts/feed_bowl.gd")
+const CandleSpot := preload("res://scripts/candle_spot.gd")
+const Tea := preload("res://scripts/tea.gd")
 
 const T := 0.2          # wall thickness
 const DOOR_W := 1.0
@@ -71,7 +73,7 @@ func shell(parent: Node, pos: Vector3, spec: Dictionary) -> Node3D:
 		k.box(root, Vector3(w - 0.2, 0.1, 0.02), Vector3(0, 0.08, s * (d / 2.0 - T / 2.0 - 0.02)), inside.darkened(0.35))
 		k.box(root, Vector3(0.02, 0.1, d - 0.2), Vector3(s * (w / 2.0 - T / 2.0 - 0.02), 0.08, 0), inside.darkened(0.35))
 	if not spec.get("roofless", false):
-		k.box(root, Vector3(w, 0.06, d), Vector3(0, h + 0.03, 0), inside.lightened(0.25))
+		k.box(root, Vector3(w, 0.06, d), Vector3(0, h + 0.03, 0), inside.lightened(0.25), {"solid": true})
 		_roof(root, w, d, h, walls, pattern, spec.get("roof", Color(0.35, 0.22, 0.18)), spec.get("chimney", true))
 	else:
 		_ruined_roof(root, w, d, h)
@@ -287,7 +289,7 @@ func your_house(parent: Node, pos: Vector3) -> Node3D:
 	var kettle := k.thing(h, Vector3(0.3, 0.25, 0.3), Vector3(0.35, 1.0, -3.0), "Make tea", [
 		"You light the camping burner and wait for the kettle. Tea tastes of smoke now. It's perfect.",
 		"Another cup. Biscuit watches the steam.",
-	])
+	], Tea)
 	f.kettle(kettle, Vector3(0, -0.1, 0))
 	f.counter(h, Vector3(1.9, 0, -3.1), 0, 2.4, Color(0.6, 0.66, 0.6), -0.3)
 	k.search(h, Vector3(2.4, 0.6, 0.1), Vector3(1.9, 0.45, -2.75), "Search the cupboards",
@@ -339,6 +341,11 @@ func your_house(parent: Node, pos: Vector3) -> Node3D:
 	f.table(h, Vector3(-1.0, 0, -2.75), 0, Vector2(0.45, 0.45), Kit.WOOD_DARK)
 	f.lamp(h, Vector3(-1.0, 0.77, -2.75), true)
 	f.bookshelf(h, Vector3(-1.15, 0, -0.2), 90, 1.8, 0.9)
+	# Saucers waiting for candles.
+	for spot in [Vector3(2.95, 0.79, 0.25), Vector3(1.0, 0.92, -3.0), Vector3(-1.15, 1.83, -0.4), Vector3(-2.6, 0.95, 3.25), Vector3(-1.0, 0.78, -2.75)]:
+		var cs := k.thing(h, Vector3(0.2, 0.2, 0.2), spot + Vector3(0, 0.08, 0), "Put a candle here", [], CandleSpot)
+		k.cyl(cs, 0.07, 0.015, Vector3(0, -0.075, 0), Color(0.85, 0.82, 0.75), {"sides": 8})
+	k.box(h, Vector3(1.2, 0.04, 0.22), Vector3(-2.6, 0.88, 3.29), TRIM)  # inside window sill
 	k.thing(h, Vector3(0.3, 1.8, 0.9), Vector3(-1.15, 0.9, -0.2), "Browse the books", [
 		"Gardening books, two thrillers, a road atlas, and a book about cats you don't remember buying.",
 	])
@@ -414,7 +421,7 @@ func okafor_house(parent: Node, pos: Vector3) -> Node3D:
 	tins.journal = "Found Biscuit's food in Grace's cupboard. Six tins. I'll ration them."
 	tins.empty_prompt = "Look in the cupboard"
 	k.search(h, Vector3(1.2, 0.6, 0.1), Vector3(-1.8, 0.45, -2.75), "Search the kitchen cupboards",
-		"Grace kept a tidy kitchen. Tea bags, a tin of peaches, and a note on the lid: \"for a rainy day\".", ["tea", "peaches"])
+		"Grace kept a tidy kitchen. Tea bags, a tin of peaches with a note on the lid (\"for a rainy day\"), and a candle.", ["tea", "peaches", "candle"])
 	for i in 6:
 		k.cyl(tins, 0.04, 0.06, Vector3(-0.2 + i * 0.08, -0.12, 0), Color(0.75, 0.55, 0.3), {"sides": 6})
 
@@ -489,7 +496,7 @@ func bell_house(parent: Node, pos: Vector3) -> Node3D:
 		"No.",
 	])
 	k.search(h, Vector3(2.4, 0.6, 0.1), Vector3(1.8, 0.45, -2.75), "Search the cupboards",
-		"Two tins of soup, a packet of custard creams, and a first aid box.", ["soup", "soup", "biscuits", "bandages"])
+		"Two tins of soup, custard creams, a first aid box, and birthday candles. Close enough.", ["soup", "soup", "biscuits", "bandages", "candle", "candle"])
 	var cal := k.thing(h, Vector3(0.05, 0.6, 0.45), Vector3(3.86, 1.6, -2.0), "Read the calendar", [
 		"The calendar is still on March. Someone circled the 14th and wrote \"drill?\" next to it.",
 		"Under it, in different handwriting: \"School says it's just a drill. Don't panic the kids.\"",

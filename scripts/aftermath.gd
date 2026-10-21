@@ -423,6 +423,7 @@ func _city_smoke() -> void:
 	# The city is still smoking, months later.
 	for p: Vector3 in [Vector3(-40, 15, 95), Vector3(5, 18, 105), Vector3(55, 12, 92)]:
 		var s := CPUParticles3D.new()
+		s.add_to_group("smoke")
 		s.amount = 70
 		s.lifetime = 45.0
 		s.preprocess = 45.0
@@ -448,6 +449,7 @@ func _city_smoke() -> void:
 		m.shading_mode = BaseMaterial3D.SHADING_MODE_PER_VERTEX
 		m.albedo_color = Color(0.32, 0.3, 0.3, 0.4)
 		m.albedo_texture = _soft_circle()
+		m.vertex_color_use_as_albedo = true
 		q.material = m
 		s.mesh = q
 		world.add_child(s)

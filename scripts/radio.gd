@@ -65,13 +65,28 @@ func _ready() -> void:
 
 
 func interact() -> String:
-	if not on:
-		on = true
-		prompt = "Tune the radio"
-		_audio.play()
-		_playback = _audio.get_stream_playback() as AudioStreamGeneratorPlayback
+	power_on()
 	get_tree().call_group("game", "start_tuning", self)
 	return ""
+
+
+func power_on() -> void:
+	if on:
+		return
+	on = true
+	prompt = "Tune the radio"
+	_audio.play()
+	_playback = _audio.get_stream_playback() as AudioStreamGeneratorPlayback
+
+
+## Which stations you've heard, for saving.
+func heard_counts() -> Dictionary:
+	return _heard.duplicate()
+
+
+func restore_heard(d: Dictionary) -> void:
+	for id in d:
+		_heard[id] = int(d[id])
 
 
 ## How clearly the strongest station is coming through, 0..1.

@@ -84,6 +84,22 @@ small story inside.
 ![Journal](docs/loop/journal.png)
 ![Backpack](docs/loop/backpack.png)
 
+## Weather, comfort and saving
+
+- **Title screen** over your kitchen: Continue (if there's a save), New game, Quit.
+- **Weather** changes each day: grey on day 1, rain on day 2, ash fall on
+  day 3, then a mix (sometimes clearer). Rain falls around you, hisses outside
+  and drums on the roof when you're indoors. Ash days are thick and grey.
+- **Home comfort:** inside your house the corner shows how cozy it is. Put
+  candles on the five saucers (you need matches), let Biscuit move in, make
+  tea, and leave the radio on 96.4. The morning line after you sleep depends
+  on how cozy the house was.
+- **Saving:** the game saves every time you sleep (to `user://save.json`).
+
+![Title](docs/home/title.png)
+![Rain at dusk](docs/home/rain.png)
+![Candles](docs/home/candles.png)
+
 ## Signs of the strikes
 
 All in `scripts/aftermath.gd`. The city (and the flash) was to the south.
@@ -156,6 +172,7 @@ things around while we find the feel. Real models can replace them later.
 ## Screenshots from the command line
 
 ```
-godot --path . -- --shot=out.png [--home | --kitchen | --bedroom | --yourhouse | --okafor | --street | --lot | --busstop | --cat | --car | --crash | --van | --road | --flash | --decon | --help | --memorial | --wires | --shelter] [--third | --face [--close]] [--dusk | --night] [--torch] [--tuning] [--journal | --backpack]
-godot --path . -- --selftest   # presses E on a few things and prints what happens
+godot --path . -- --shot=out.png [--home | --kitchen | --bedroom | --yourhouse | --okafor | --street | --lot | --busstop | --cat | --car | --crash | --van | --road | --flash | --decon | --help | --memorial | --wires | --shelter] [--third | --face [--close]] [--dusk | --night] [--torch] [--tuning] [--journal | --backpack] [--rain | --ashfall] [--candles] [--title]
+godot --path . -- --selftest   # presses E on a few things, saves, prints what happens
+godot --path . -- --loadtest   # loads that save and prints it
 ```

@@ -2,6 +2,10 @@
 extends "res://scripts/interactable.gd"
 
 
+func _ready() -> void:
+	add_to_group("geiger_item")
+
+
 func interact() -> String:
 	get_tree().call_group("game", "pick_up_geiger")
 	queue_free()
