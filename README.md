@@ -5,7 +5,7 @@ after several nearby nuclear strikes. The world shows the horror; playing it
 should feel gentle. A radio keeps picking up a broadcast that shouldn't exist,
 and the signal gets stronger toward the forest.
 
-This is the first small test scene, built in **Godot 4.4** (MIT licensed).
+Built in **Godot 4.4** (MIT licensed).
 
 ![Street](docs/street.png)
 ![Home](docs/home.png)

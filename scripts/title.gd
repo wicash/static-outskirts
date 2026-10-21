@@ -37,7 +37,7 @@ func _init() -> void:
 	col.add_child(_button("New game", "new"))
 	col.add_child(_button("Quit", "quit"))
 	var note := Label.new()
-	note.text = "working title  ·  prototype"
+	note.text = "working title"
 	note.add_theme_font_size_override("font_size", 14)
 	note.add_theme_color_override("font_color", Color(0.7, 0.68, 0.62, 0.8))
 	note.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
