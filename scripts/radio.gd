@@ -127,9 +127,20 @@ func _update_lock(best: String, strength: float, delta: float) -> void:
 	heard.emit(_station_text(best, strength))
 
 
+const JOURNAL := {
+	"tower": "91.3 at night: a woman's voice, very far away. I think she's at the tower.",
+	"music": "96.4 is a music box tape on a loop. The number from the Bells' walkie-talkie. It's oddly nice.",
+	"emergency": "104.1 still plays the emergency message. \"This is a scheduled drill.\" It wasn't.",
+}
+
+
 func _station_text(id: String, strength: float) -> String:
 	var n: int = _heard[id]
 	_heard[id] = n + 1
+	if n == 0 and (id != "tower" or strength >= 0.5):
+		var game := get_tree().get_first_node_in_group("game")
+		if game:
+			game.write_journal(JOURNAL[id])
 	match id:
 		"tower":
 			if strength < 0.5:

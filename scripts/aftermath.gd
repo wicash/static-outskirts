@@ -92,6 +92,7 @@ func _flash_wall(pos: Vector3) -> void:
 		"You've started noticing them everywhere. A pale wall, a darker shape. Always on the side facing the city.",
 	])
 	t.position = Vector3(0, 1.25, 0.1)
+	t.journal = "There's a shadow on the wall at the empty lot. A person and a bicycle. I keep thinking about which way they were going."
 
 
 ## Paint blistered and bleached on the sides that faced the city.
@@ -195,6 +196,7 @@ func _leaflets() -> void:
 	]
 	for p: Vector3 in [Vector3(0.9, 0.14, -4.4), Vector3(34.5, 0.14, 4.4)]:
 		var t := k.thing_box(world, Vector3(0.21, 0.01, 0.3), p, Color(0.92, 0.9, 0.78), "Read the leaflet", lines, {"rot": Vector3(0, k.rng.randf_range(0, 90), 0)})
+		t.journal = "The leaflets said: go in, stay in, tune to 104.1. It's still broadcasting. Nobody's listening but me."
 		k.box(t, Vector3(0.16, 0.012, 0.05), Vector3(0, 0.001, -0.1), Color(0.7, 0.2, 0.15))  # red header band
 
 
@@ -241,10 +243,11 @@ func _decon_tent(pos: Vector3) -> void:
 	for x: float in [-1.2, 0.0]:
 		k.beam(g, Vector3(x, 0, -0.85), Vector3(x + 0.1, 0.73, -0.35), 0.03, Kit.METAL)
 		k.beam(g, Vector3(x, 0, -0.35), Vector3(x + 0.1, 0.73, -0.85), 0.03, Kit.METAL)
-	var clip := k.thing_box(g, Vector3(0.24, 0.02, 0.32), Vector3(-0.8, 0.78, -0.6), Color(0.55, 0.4, 0.25), "Read the clipboard", [
+	var clip: StaticBody3D = k.thing_box(g, Vector3(0.24, 0.02, 0.32), Vector3(-0.8, 0.78, -0.6), Color(0.55, 0.4, 0.25), "Read the clipboard", [
 		"A list of names and times, ticked off one by one. Readings in another column: 0.2, 0.3, 0.2, 1.8, 0.2...",
 		"The ticks stop halfway down the third page. The last name has a question mark next to it.",
 	])
+	clip.journal = "The decontamination tent at the end of the street. The list stops halfway down page three. I didn't look for my name."
 	k.box(clip, Vector3(0.2, 0.01, 0.26), Vector3(0, 0.012, 0.01), Kit.PAPER)
 	k.cyl(g, 0.05, 0.08, Vector3(-0.2, 0.81, -0.5), Color(0.9, 0.85, 0.2), {"sides": 6})  # a dosimeter left behind
 	# Tubs of clothes and shoes, and a coiled hose.
@@ -292,9 +295,10 @@ func _family_shelter(pos: Vector3) -> void:
 	k.box(g, Vector3(0.5, 0.06, 0.4), Vector3(0.2, 0.03, -1.6), Color(0.6, 0.25, 0.3))  # a child's sleeping bag, pulled half out
 	var t := k.thing(g, Vector3(1.0, 0.8, 0.4), Vector3(0, 0.4, -1.2), "Look in the shelter", [
 		"A shelter dug into the Bells' garden: an old door, a mattress, three feet of earth. Two small sleeping bags inside.",
-		"Inside the door, in crayon, a tally of days. It stops at eleven. Under it: \"Going to the bus. Love you house.\"",
+		"Inside the door, in crayon, a tally of days. It stops at four. Under it: \"Going to the bus. Love you house.\"",
 	])
 	t.position = Vector3(0, 0.4, -1.3)
+	t.journal = "The Bells dug a shelter in their garden. Four days, then they went for the bus. \"Love you house.\""
 
 
 ## Dried flowers and candles on the fence of the burnt house.
@@ -311,10 +315,11 @@ func _memorial(pos: Vector3) -> void:
 	k.box(g, Vector3(0.18, 0.24, 0.01), Vector3(0.2, 0.62, 0.27), Color(0.5, 0.55, 0.6))  # photo pinned to the fence
 	k.ball(g, Vector3(0.22, 0.25, 0.18), Vector3(-0.5, 0.25, -0.05), Color(0.55, 0.4, 0.28))  # teddy
 	k.ball(g, Vector3(0.15, 0.15, 0.14), Vector3(-0.5, 0.45, -0.05), Color(0.55, 0.4, 0.28))
-	k.thing(g, Vector3(3.2, 0.8, 0.5), Vector3(0, 0.4, 0.05), "Look at the flowers", [
+	var mem := k.thing(g, Vector3(3.2, 0.8, 0.5), Vector3(0, 0.4, 0.05), "Look at the flowers", [
 		"Dried flowers, burnt-down candles, ribbons. A photo of an old man laughing, with a dog on his lap.",
 		"A card in a child's handwriting: \"Mr Lindkvist gave us apples. Sorry about your house.\"",
 	])
+	mem.journal = "Someone left flowers for Mr. Lindqvist at No. 5. He gave the kids apples."
 
 
 func _dog_lead(pole: Vector3) -> void:
@@ -322,10 +327,11 @@ func _dog_lead(pole: Vector3) -> void:
 	k.ring(world, 0.07, 0.1, pole + Vector3(0, 0.9, 0), red, Vector3.ZERO)
 	k.beam(world, pole + Vector3(0.08, 0.9, 0), pole + Vector3(0.5, 0.14, -0.3), 0.025, red)
 	k.ring(world, 0.08, 0.11, pole + Vector3(0.55, 0.13, -0.35), Color(0.25, 0.3, 0.55), Vector3(80, 0, 0))  # empty collar
-	k.thing(world, Vector3(0.4, 1.0, 0.4), pole + Vector3(0.3, 0.5, -0.2), "Look at the lead", [
+	var lead := k.thing(world, Vector3(0.4, 1.0, 0.4), pole + Vector3(0.3, 0.5, -0.2), "Look at the lead", [
 		"A dog lead, clipped to the lamppost. The collar on the end is still buckled, and empty.",
 		"The tag says PIP. You think of the missing posters.",
 	])
+	lead.journal = "A dog lead clipped to a lamppost, collar still buckled. PIP. I hope Pip is somewhere with a sofa."
 
 
 func _help_on_road(pos: Vector3) -> void:
@@ -406,10 +412,11 @@ func _night_flowers() -> void:
 	for p in spots:
 		k.beam(world, p, p + Vector3(0, 0.3, 0.05), 0.015, Color(0.3, 0.38, 0.32))
 		k.ball(blooms, Vector3(0.12, 0.05, 0.12), p + Vector3(0, 0.31, 0.05), Color(0.6, 0.85, 0.95), {"glow": 1.5})
-	k.thing(world, Vector3(0.6, 0.5, 0.6), Vector3(-15.0, 0.25, -10.5), "Look at the flowers", [
+	var nf := k.thing(world, Vector3(0.6, 0.5, 0.6), Vector3(-15.0, 0.25, -10.5), "Look at the flowers", [
 		"Little pale flowers. In daylight they're shut tight. After dark they open and glow, very faintly.",
 		"You don't remember them from before. They only grow on the north side of things.",
 	])
+	nf.journal = "There are flowers in the empty lot that glow at night. I don't remember them from before."
 
 
 func _city_smoke() -> void:

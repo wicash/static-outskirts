@@ -214,6 +214,7 @@ func _street_furniture() -> void:
 		"Near the bottom, half hidden: a hospital staff photo. It takes you a moment to recognise yourself.",
 	])
 	board.rotation_degrees.y = 180
+	board.journal = "There's a staff photo of me on the missing posters board. Someone was looking for me. Or for my body."
 	for s in [-0.65, 0.65]:
 		k.box(board, Vector3(0.08, 2.2, 0.08), Vector3(s, -0.5, 0), Kit.WOOD_DARK)
 	k.box(board, Vector3(1.4, 1.0, 0.05), Vector3(0, 0.1, 0), Color(0.55, 0.42, 0.3))

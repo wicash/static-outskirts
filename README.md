@@ -30,6 +30,8 @@ This is the first small test scene, built in **Godot 4.4** (MIT licensed).
 | F | Torch on / off |
 | T | Skip an hour (for testing) |
 | G | Check the Geiger counter (once you've picked it up) |
+| Tab | Backpack (items, and things you can do with them) |
+| J | Sam's journal |
 | A / D or mouse wheel | Turn the radio dial (Shift for fine tuning) |
 | Esc | Free the mouse |
 
@@ -63,6 +65,24 @@ small story inside.
   painted face with big shiny eyes and blush, spiky bangs, two braids and a
   cowlick poking out of her teal pompom beanie, an oversized yellow raincoat and
   red wellies. Animated in third person. Footsteps and wind are generated in code for now.
+
+## Things to do
+
+- **Search** cupboards, wardrobes and desks for useful things: candles,
+  matches, tea, tins, socks, a first aid box. Everything goes into the backpack.
+- **Feed Biscuit:** Grace's note at No. 6 says the cat food is in her
+  cupboard. Fill the bowl by your front door (once a day) and Biscuit walks
+  in to eat. Each meal, like each time you pet him, builds his trust. After
+  the first meal he moves into the blanket by your door.
+- **Biscuit's collar** is on Grace's nightstand. Once he trusts you, put it
+  back on him from the backpack.
+- **Tom's tape:** dig up the tin under the swing at the empty lot, find Tom
+  Bell's Walkman in the Bells' kids' room, and play it from the backpack.
+- **The journal** fills in by itself as Sam finds things, hears stations,
+  feeds Biscuit and sleeps, grouped by day.
+
+![Journal](docs/loop/journal.png)
+![Backpack](docs/loop/backpack.png)
 
 ## Signs of the strikes
 
@@ -136,5 +156,6 @@ things around while we find the feel. Real models can replace them later.
 ## Screenshots from the command line
 
 ```
-godot --path . -- --shot=out.png [--home | --kitchen | --bedroom | --yourhouse | --okafor | --street | --lot | --busstop | --cat | --car | --crash | --van | --road | --flash | --decon | --help | --memorial | --wires | --shelter] [--third | --face [--close]] [--dusk | --night] [--torch] [--tuning]
+godot --path . -- --shot=out.png [--home | --kitchen | --bedroom | --yourhouse | --okafor | --street | --lot | --busstop | --cat | --car | --crash | --van | --road | --flash | --decon | --help | --memorial | --wires | --shelter] [--third | --face [--close]] [--dusk | --night] [--torch] [--tuning] [--journal | --backpack]
+godot --path . -- --selftest   # presses E on a few things and prints what happens
 ```

@@ -8,6 +8,7 @@ const Furniture := preload("res://scripts/furniture.gd")
 const Radio := preload("res://scripts/radio.gd")
 const Bed := preload("res://scripts/bed.gd")
 const GeigerItem := preload("res://scripts/geiger_item.gd")
+const FeedBowl := preload("res://scripts/feed_bowl.gd")
 
 const T := 0.2          # wall thickness
 const DOOR_W := 1.0
@@ -274,6 +275,8 @@ func your_house(parent: Node, pos: Vector3) -> Node3D:
 		["You and your mum at the seaside. You were nine and furious about the sand."])
 	f.picture(photo, Vector3.ZERO, 0, Vector2(0.14, 0.18), Color(0.45, 0.6, 0.7))
 	f.wardrobe(h, Vector3(-3.6, 0, 0.3), 90)
+	k.search(h, Vector3(0.1, 1.8, 1.1), Vector3(-3.27, 0.95, 0.3), "Search the wardrobe",
+		"Your old clothes smell of a house nobody lived in for weeks. Thick wool socks, though.", ["socks"])
 	f.rug(h, Vector3(-2.7, 0, 0.2), 0, Vector2(1.4, 1.0), Kit.FABRIC_BLUE)
 	f.chair(h, Vector3(-2.0, 0, 0.9), -120, Kit.WOOD_LIGHT)
 	k.box(h, Vector3(0.38, 0.06, 0.36), Vector3(-2.0, 0.5, 0.9), Kit.FABRIC_GREEN, {"rot": Vector3(0, 30, 3)})  # jumper on the chair
@@ -287,6 +290,8 @@ func your_house(parent: Node, pos: Vector3) -> Node3D:
 	])
 	f.kettle(kettle, Vector3(0, -0.1, 0))
 	f.counter(h, Vector3(1.9, 0, -3.1), 0, 2.4, Color(0.6, 0.66, 0.6), -0.3)
+	k.search(h, Vector3(2.4, 0.6, 0.1), Vector3(1.9, 0.45, -2.75), "Search the cupboards",
+		"Your own cupboards, mostly bare. Two candles and a box of matches at the back.", ["candle", "candle", "matches"])
 	f.fridge(h, Vector3(3.5, 0, -3.05), 0)
 	f.plant(h, Vector3(2.9, 0.9, -3.15), true, 0.8)
 	f.crate(h, Vector3(3.45, 0, -2.1), 10)
@@ -347,7 +352,8 @@ func your_house(parent: Node, pos: Vector3) -> Node3D:
 	k.thing(h, Vector3(0.6, 0.15, 0.6), Vector3(2.0, 0.07, 2.85), "Look at the old blanket", [
 		"A folded blanket by the door. Something small has been sleeping on it.",
 	])
-	f.bowl(h, Vector3(2.6, 0, 3.05), Kit.FABRIC_RED)
+	var feed := k.thing(h, Vector3(0.35, 0.2, 0.35), Vector3(2.6, 0.1, 3.05), "Fill Biscuit's bowl", [], FeedBowl)
+	f.bowl(feed, Vector3(0, -0.1, 0), Kit.FABRIC_RED)
 
 	# The pendant lamp: the one warm light on the street.
 	k.cyl(h, 0.008, 0.45, Vector3(1.0, 2.47, -0.3), Color(0.1, 0.1, 0.1), {"sides": 3})
@@ -398,11 +404,17 @@ func okafor_house(parent: Node, pos: Vector3) -> Node3D:
 		"\"Gone to my sister's in the city. Back Sunday. Feed Biscuit! Tins are in the cupboard. - G.\"",
 		"The note is from March. She only took a small bag; her good coat is still on the hook.",
 	])
+	note.journal = "Grace from No. 6 went to her sister's in the city in March. \"Back Sunday.\" She asked someone to feed Biscuit. I suppose that's me now."
 	k.box(note, Vector3(0.28, 0.005, 0.2), Vector3(0, -0.02, 0), Kit.PAPER, {"rot": Vector3(0, 10, 0)})
 	var tins := k.thing(h, Vector3(0.6, 0.3, 0.3), Vector3(-0.5, 0.95, -3.2), "Take the cat food", [
 		"Six tins of cat food. Biscuit is going to like you a lot more now.",
 		"The cupboard is empty.",
 	])
+	tins.gives = ["cat_food", "cat_food", "cat_food", "cat_food", "cat_food", "cat_food"]
+	tins.journal = "Found Biscuit's food in Grace's cupboard. Six tins. I'll ration them."
+	tins.empty_prompt = "Look in the cupboard"
+	k.search(h, Vector3(1.2, 0.6, 0.1), Vector3(-1.8, 0.45, -2.75), "Search the kitchen cupboards",
+		"Grace kept a tidy kitchen. Tea bags, a tin of peaches, and a note on the lid: \"for a rainy day\".", ["tea", "peaches"])
 	for i in 6:
 		k.cyl(tins, 0.04, 0.06, Vector3(-0.2 + i * 0.08, -0.12, 0), Color(0.75, 0.55, 0.3), {"sides": 6})
 
@@ -425,6 +437,8 @@ func okafor_house(parent: Node, pos: Vector3) -> Node3D:
 		"A red collar with a brass tag: \"BISCUIT. If found, call Grace, 6 Alder St.\"",
 		"You pocket it. It feels like a promise.",
 	])
+	tag.gives = ["collar"]
+	tag.journal = "Biscuit's collar was on Grace's nightstand. She must have taken it off to wash it."
 	k.ring(tag, 0.04, 0.055, Vector3(0, -0.03, 0), Color(0.7, 0.15, 0.12))
 	k.cyl(tag, 0.02, 0.005, Vector3(0.05, -0.03, 0.04), Color(0.8, 0.65, 0.3), {"sides": 6})
 	f.wardrobe(h, Vector3(3.55, 0, 0.9), -90, true)
@@ -450,6 +464,9 @@ func bell_house(parent: Node, pos: Vector3) -> Node3D:
 	k.box(walkie, Vector3(0.1, 0.2, 0.06), Vector3.ZERO, Color(0.9, 0.75, 0.2))
 	k.cyl(walkie, 0.008, 0.15, Vector3(0.03, 0.16, 0), Color(0.1, 0.1, 0.1), {"sides": 3})
 	f.desk(h, Vector3(-2.3, 0, -3.1), 0, Color(0.8, 0.75, 0.6))
+	k.search(h, Vector3(1.0, 0.4, 0.5), Vector3(-2.3, 0.55, -3.0), "Search the desk",
+		"In the drawer: a yellow Walkman with TOM stickered on the lid, and a notebook full of drawings.", ["walkman", "notebook"],
+		"The Bell kids' desk had Tom's Walkman in it. Now I can play the tape.")
 	f.chair(h, Vector3(-2.4, 0, -2.5), 180, Kit.FABRIC_RED)
 	for i in 6:
 		k.box(h, Vector3(0.012, 0.012, 0.1), Vector3(-2.6 + i * 0.05, 0.73, -3.0), [Kit.FABRIC_RED, Kit.FABRIC_BLUE, Kit.FABRIC_MUSTARD, Kit.FABRIC_GREEN, Color(0.6, 0.3, 0.6), Color(0.1, 0.1, 0.1)][i], {"rot": Vector3(0, k.rng.randf_range(-40, 40), 0)})  # crayons
@@ -467,10 +484,17 @@ func bell_house(parent: Node, pos: Vector3) -> Node3D:
 	f.stove(h, Vector3(0.2, 0, -3.1), 0)
 	f.counter(h, Vector3(1.8, 0, -3.1), 0, 2.4, Color(0.85, 0.82, 0.72), 0.3)
 	f.fridge(h, Vector3(3.5, 0, -3.05), 0, Color(0.7, 0.85, 0.8))
+	k.thing(h, Vector3(0.7, 1.7, 0.1), Vector3(3.5, 0.85, -2.7), "Open the fridge", [
+		"The smell arrives before the light does. You close it again, very calmly.",
+		"No.",
+	])
+	k.search(h, Vector3(2.4, 0.6, 0.1), Vector3(1.8, 0.45, -2.75), "Search the cupboards",
+		"Two tins of soup, a packet of custard creams, and a first aid box.", ["soup", "soup", "biscuits", "bandages"])
 	var cal := k.thing(h, Vector3(0.05, 0.6, 0.45), Vector3(3.86, 1.6, -2.0), "Read the calendar", [
 		"The calendar is still on March. Someone circled the 14th and wrote \"drill?\" next to it.",
 		"Under it, in different handwriting: \"School says it's just a drill. Don't panic the kids.\"",
 	])
+	cal.journal = "The Bells' calendar: March 14th circled, \"drill?\". The school told them it was just a drill."
 	k.box(cal, Vector3(0.01, 0.6, 0.42), Vector3.ZERO, Kit.PAPER)
 	k.box(cal, Vector3(0.012, 0.25, 0.4), Vector3(0, 0.15, 0), Color(0.45, 0.6, 0.7))
 	k.ring(cal, 0.03, 0.04, Vector3(-0.01, -0.12, 0.08), Color(0.8, 0.15, 0.1), Vector3(0, 0, 90))
@@ -587,8 +611,11 @@ func empty_lot(parent: Node, pos: Vector3) -> Node3D:
 		k.cyl(g, 0.15, 0.05, p + Vector3(0.12, tall, 0.05), Color(0.35, 0.25, 0.15), {"rot": Vector3(70, 0, 0), "sides": 8})
 	var tin := k.thing(g, Vector3(0.3, 0.15, 0.3), Vector3(0.4, 0.05, -0.9), "Dig up the tin", [
 		"A biscuit tin, half buried under the swing. Inside: a cassette tape labelled \"For whoever finds this\".",
-		"You'll need something that plays tapes.",
+		"Just the empty tin now.",
 	])
+	tin.gives = ["tape"]
+	tin.journal = "Dug up a tin under the swing at the empty lot. A tape inside: \"For whoever finds this\". I need something to play it on."
+	tin.empty_prompt = "Look at the tin"
 	k.cyl(tin, 0.14, 0.1, Vector3.ZERO, Color(0.6, 0.2, 0.2), {"sides": 8})
 	k.cyl(tin, 0.145, 0.02, Vector3(0, 0.05, 0), Color(0.75, 0.6, 0.3), {"sides": 8})
 	return g

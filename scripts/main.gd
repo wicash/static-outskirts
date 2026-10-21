@@ -15,6 +15,8 @@ const DayNight := preload("res://scripts/daynight.gd")
 const RadioDial := preload("res://scripts/radio_dial.gd")
 const Aftermath := preload("res://scripts/aftermath.gd")
 const Geiger := preload("res://scripts/geiger.gd")
+const Items := preload("res://scripts/items.gd")
+const Paper := preload("res://scripts/paper.gd")
 
 ## How many screen pixels make up one game pixel. Bigger = chunkier.
 const PIXEL_SIZE := 2
@@ -33,6 +35,30 @@ var _fade: ColorRect
 var clock: Node
 var _radio: Node = null  # the radio being tuned, if any
 var _geiger: Node3D = null
+var cat: Node3D
+
+# What Sam carries and what she has written down.
+var inventory := {}            # item id -> count
+var journal_entries: Array = []  # [day, text]
+var _paper: Control
+var _paper_mode := ""          # "", "journal" or "backpack"
+var _journal_hint: Label
+
+# Tom's tape, when it's playing.
+const TAPE_LINES := [
+	"*click* ...is it on? It's on. Hi. This is Tom Bell. I'm eight and a half.",
+	"If you find this, we went to the bus. Dad says we're going to Aunt Ruth's, where there's a farm.",
+	"Ada says the radio said it was a drill, but it wasn't a drill. There were three suns.",
+	"We were in the shelter for four days. At night there's a lady on the radio. She reads out names.",
+	"Mum turns it off when she does. But I heard her say Okafor. And I think she said Hale.",
+	"Please feed the cat at number six. His name is Biscuit. He likes his ears done. Bye. *click*",
+]
+var _tape_audio: AudioStreamGeneratorPlayback
+var _tape_line := -1
+var _tape_time := 0.0
+var _tape_phase := 0.0
+var _tape_lp := 0.0
+var _tape_st := 0.0
 
 
 func _ready() -> void:
@@ -49,6 +75,8 @@ func _ready() -> void:
 	clock.refresh_night_things()
 	_start_wind()
 	_maybe_take_screenshot()
+	if "--selftest" in OS.get_cmdline_user_args():
+		_selftest()
 
 
 # --- Setup -------------------------------------------------------------------
@@ -65,6 +93,8 @@ func _setup_input() -> void:
 		"torch": [KEY_F],
 		"skip_hour": [KEY_T],
 		"geiger": [KEY_G],
+		"backpack": [KEY_TAB],
+		"journal": [KEY_J],
 	}
 	for action in keys:
 		if not InputMap.has_action(action):
@@ -119,7 +149,15 @@ func _setup_hud() -> void:
 	_hint = _label(hud, 16)
 	_hint.position = Vector2(20, 16)
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_hint.text = "Click to look around   WASD move   Shift run   E interact   V switch view   F torch   T skip an hour   Esc free mouse"
+	_hint.text = "Click to look around   WASD move   Shift run   E interact   V switch view   F torch   Tab backpack   J journal   T skip an hour   Esc free mouse"
+
+	_journal_hint = _label(hud, 16)
+	_journal_hint.position = Vector2(20, 44)
+	_journal_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_journal_hint.modulate.a = 0.0
+
+	_paper = Paper.new()
+	hud.add_child(_paper)
 
 	_clock_label = _label(hud, 18)
 	_clock_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
@@ -332,7 +370,7 @@ func _spawn_player(pos: Vector3, yaw: float) -> void:
 
 
 func _spawn_cat(pos: Vector3) -> void:
-	var cat: Node3D = Cat.new()
+	cat = Cat.new()
 	cat.position = pos
 	cat.home = pos
 	cat.player = player
@@ -409,6 +447,7 @@ func sleep() -> void:
 	t.tween_property(_fade, "color:a", 1.0, 1.5)
 	await t.finished
 	clock.sleep_until_morning()
+	write_journal("Slept. Woke up on day %d." % clock.day)
 	await get_tree().create_timer(1.0).timeout
 	_show_message(_morning_line(clock.day))
 	var t2 := create_tween()
@@ -428,6 +467,164 @@ func _morning_line(day: int) -> String:
 
 # --- Per-frame ---------------------------------------------------------------
 
+# --- Backpack and journal -----------------------------------------------------
+
+func has_item(id: String) -> bool:
+	return inventory.get(id, 0) > 0
+
+
+func take_item(id: String) -> void:
+	inventory[id] = maxi(inventory.get(id, 0) - 1, 0)
+	if inventory[id] == 0:
+		inventory.erase(id)
+
+
+## Adds items and returns a short line saying what went into the backpack.
+func add_items(ids: Array) -> String:
+	var counts := {}
+	for id in ids:
+		inventory[id] = inventory.get(id, 0) + 1
+		counts[id] = counts.get(id, 0) + 1
+	var parts: Array[String] = []
+	for id in counts:
+		parts.append(("%d x %s" % [counts[id], Items.name_of(id)]) if counts[id] > 1 else Items.name_of(id))
+	return "(Into your backpack: %s)" % ", ".join(parts)
+
+
+## Sam writes a line in her journal (once per day for each line).
+func write_journal(text: String) -> void:
+	for e in journal_entries:
+		if e[0] == clock.day and e[1] == text:
+			return
+	journal_entries.append([clock.day, text])
+	_journal_hint.text = "Journal updated  (J)"
+	_journal_hint.modulate.a = 1.0
+	var t := create_tween()
+	t.tween_interval(3.0)
+	t.tween_property(_journal_hint, "modulate:a", 0.0, 1.5)
+
+
+func _open_journal() -> void:
+	var text := ""
+	var day := -1
+	if journal_entries.is_empty():
+		text = "[i]Nothing written yet. Go and look around.[/i]"
+	for e in journal_entries:
+		if e[0] != day:
+			day = e[0]
+			text += ("\n" if text != "" else "") + "[b]Day %d[/b]\n" % day
+		text += "-  " + e[1] + "\n"
+	_paper.open("Sam's journal", text, "J or Esc to close", true)
+	_paper_mode = "journal"
+	_paper_opened()
+
+
+func _open_backpack() -> void:
+	var text := ""
+	var ids := inventory.keys()
+	ids.sort()
+	if ids.is_empty():
+		text = "[i]Empty, apart from crumbs. Search cupboards, drawers and cars.[/i]"
+	for id in ids:
+		var n: int = inventory[id]
+		text += "[b]%s[/b]%s   [i]%s[/i]\n" % [Items.name_of(id), "  x%d" % n if n > 1 else "", Items.describe(id)]
+	_paper.open("Backpack", text, "Tab or Esc to close")
+	if has_item("tape") and has_item("walkman"):
+		_paper.add_button("Play Tom's tape on the Walkman", func(): _close_paper(); _play_tape())
+	elif has_item("tape"):
+		_paper.add_button("Play the tape (you need something to play it on)", func(): pass)
+	if has_item("collar"):
+		_paper.add_button("Put the collar on Biscuit", _give_collar)
+	for food in ["peaches", "biscuits", "soup"]:
+		if has_item(food):
+			_paper.add_button("Eat the %s" % Items.name_of(food).to_lower(), _eat.bind(food))
+	_paper_mode = "backpack"
+	_paper_opened()
+
+
+func _paper_opened() -> void:
+	player.frozen = true
+	Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+
+
+func _close_paper() -> void:
+	_paper.close()
+	_paper_mode = ""
+	player.frozen = false
+	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
+
+
+func _give_collar() -> void:
+	var close := cat and cat.global_position.distance_to(player.global_position) < 3.0
+	if not close or cat.trust < 2:
+		_close_paper()
+		_show_message("Biscuit needs to be close by, and to trust you a bit more first.")
+		return
+	take_item("collar")
+	cat.wear_collar()
+	_close_paper()
+	_show_message("You buckle the red collar on. Biscuit shakes his head, then sits down as if nothing happened.")
+	write_journal("Biscuit has his collar back. If Grace comes home, he'll be wearing it.")
+
+
+func _eat(food: String) -> void:
+	take_item(food)
+	_close_paper()
+	var lines := {
+		"peaches": "You eat the peaches straight from the tin, slowly. Today is a good day.",
+		"biscuits": "Custard creams, slightly soft. You eat three and save the rest for later. You eat the rest.",
+		"soup": "Cold tomato soup from the tin. You've had worse. You've had better. You feel warmer anyway.",
+	}
+	_show_message(lines[food])
+	write_journal("Ate the %s." % Items.name_of(food).to_lower())
+
+
+# --- Tom's tape ----------------------------------------------------------------
+
+func _play_tape() -> void:
+	if _tape_audio == null:
+		var gen := AudioStreamGenerator.new()
+		gen.mix_rate = 22050.0
+		gen.buffer_length = 0.2
+		var audio := AudioStreamPlayer.new()
+		audio.stream = gen
+		audio.volume_db = -12.0
+		add_child(audio)
+		audio.play()
+		_tape_audio = audio.get_stream_playback() as AudioStreamGeneratorPlayback
+	_tape_line = 0
+	_tape_time = 0.0
+	_show_message(TAPE_LINES[0])
+
+
+func _update_tape(delta: float) -> void:
+	if _tape_audio == null:
+		return
+	var playing := _tape_line >= 0
+	if playing:
+		_tape_time += delta
+		if _tape_time > 5.5:
+			_tape_time = 0.0
+			_tape_line += 1
+			if _tape_line >= TAPE_LINES.size():
+				_tape_line = -1
+				write_journal("Tom Bell's tape. He heard the lady on the radio read out names. He thinks she said Hale. That's my name.")
+			else:
+				_show_message(TAPE_LINES[_tape_line])
+	# Tape hiss and a small, high, mumbling voice.
+	for i in _tape_audio.get_frames_available():
+		var v := 0.0
+		if playing:
+			_tape_st += 1.0 / 22050.0
+			var pitch := 270.0 + sin(_tape_st * 3.1) * 30.0
+			_tape_phase = fmod(_tape_phase + pitch / 22050.0, 1.0)
+			_tape_lp = lerpf(_tape_lp, _tape_phase * 2.0 - 1.0, 0.15)
+			var syllable := maxf(0.0, sin(_tape_st * 13.0) * sin(_tape_st * 3.3 + 0.5))
+			var pause := 1.0 if _tape_time < 4.6 else 0.0
+			v = _tape_lp * syllable * 0.5 * pause + randf_range(-1.0, 1.0) * 0.03
+		_tape_audio.push_frame(Vector2(v, v))
+
+
 func _show_message(text: String) -> void:
 	_message.text = text
 	_message_time = 6.0
@@ -436,6 +633,7 @@ func _show_message(text: String) -> void:
 
 func _process(delta: float) -> void:
 	_fill_wind()
+	_update_tape(delta)
 	_clock_label.text = clock.clock_text()
 	if _radio:
 		var speed := 0.5 if Input.is_action_pressed("run") else 2.5
@@ -450,6 +648,19 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _paper_mode != "":
+		if event.is_action_pressed("ui_cancel") or (event.is_action_pressed("journal") and _paper_mode == "journal") \
+				or (event.is_action_pressed("backpack") and _paper_mode == "backpack"):
+			_close_paper()
+			get_viewport().set_input_as_handled()
+		return
+	if _radio == null and not player.frozen:
+		if event.is_action_pressed("journal"):
+			_open_journal()
+			return
+		if event.is_action_pressed("backpack"):
+			_open_backpack()
+			return
 	if _radio:
 		if event is InputEventMouseButton and event.pressed:
 			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
@@ -471,6 +682,33 @@ func _unhandled_input(event: InputEvent) -> void:
 		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 	elif event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 		player.look(event.relative)
+
+
+## Dev helper: presses E on a few things in order and prints what happens.
+func _selftest() -> void:
+	await get_tree().process_frame
+	var by_prompt := {}
+	var stack: Array[Node] = [world]
+	while not stack.is_empty():
+		var n: Node = stack.pop_back()
+		if n.has_method("interact") and "prompt" in n:
+			by_prompt[n.prompt] = n
+		stack.append_array(n.get_children())
+	for p in ["Fill Biscuit's bowl", "Take the cat food", "Search the cupboards", "Search the kitchen cupboards", "Dig up the tin", "Search the desk", "Pick up the collar", "Read the note"]:
+		if by_prompt.has(p):
+			print(p, " -> ", by_prompt[p].interact())
+		else:
+			print("MISSING: ", p)
+	print("inventory: ", inventory)
+	print("bowl -> ", by_prompt["Fill Biscuit's bowl"].interact())
+	for i in 900:
+		await get_tree().process_frame
+	print("cat at ", cat.global_position, " trust ", cat.trust)
+	_open_backpack()
+	_close_paper()
+	_play_tape()
+	print("journal: ", journal_entries)
+	get_tree().quit()
 
 
 ## Dev helper: `godot -- --shot=out.png [--outside] [--third]` saves a screenshot and quits.
@@ -506,6 +744,7 @@ func _maybe_take_screenshot() -> void:
 		"--memorial": [Vector3(-14, 0.1, 2.5), PI + 0.3, -20.0],
 		"--wires": [Vector3(0, 0.1, -1.0), 0.6, 35.0],
 		"--shelter": [Vector3(-29, 0.1, 16.5), PI + 0.2, -15.0],
+		"--bowl": [Vector3(1.2, 0.1, -10.8), 2.6, 60.0],
 	}
 	for key in views:
 		if key in args:
@@ -524,6 +763,20 @@ func _maybe_take_screenshot() -> void:
 		var radio := get_tree().get_first_node_in_group("radio")
 		radio.interact()
 		radio.freq = 104.1
+	if "--journal" in args or "--backpack" in args:
+		add_items(["cat_food", "cat_food", "cat_food", "cat_food", "cat_food", "candle", "candle", "matches", "tea", "peaches", "tape", "walkman", "collar"])
+		write_journal("Grace from No. 6 went to her sister's in the city in March. \"Back Sunday.\" She asked someone to feed Biscuit. I suppose that's me now.")
+		write_journal("Found Biscuit's food in Grace's cupboard. Six tins. I'll ration them.")
+		write_journal("Fed Biscuit.")
+		write_journal("There's a shadow on the wall at the empty lot. A person and a bicycle. I keep thinking about which way they were going.")
+		clock.day = 2
+		write_journal("Slept. Woke up on day 2.")
+		write_journal("104.1 still plays the emergency message. \"This is a scheduled drill.\" It wasn't.")
+		write_journal("Tom Bell's tape. He heard the lady on the radio read out names. He thinks she said Hale. That's my name.")
+		if "--journal" in args:
+			_open_journal()
+		else:
+			_open_backpack()
 	if "--third" in args or "--face" in args:
 		player.toggle_view()
 	if "--face" in args:

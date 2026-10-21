@@ -18,6 +18,15 @@ var _body: Node3D
 var _head: Node3D
 var _tail: Node3D
 var _legs: Array[Node3D] = []
+var _collar: Node3D
+var _pet: Node
+var _route: Array[Vector3] = []   # waypoints to the food bowl
+var _eating := 0.0
+var _home_radius := 2.5
+
+## Your front door, outside and inside, so Biscuit doesn't walk through walls.
+const DOOR_OUT := Vector3(0.6, 0, -7.4)
+const DOOR_IN := Vector3(0.6, 0, -9.4)
 
 
 ## Builds the cat's look and its "Pet the cat" interaction.
@@ -39,7 +48,8 @@ func build(k: Kit) -> void:
 		k.box(_head, Vector3(0.03, 0.025, 0.01), Vector3(s * 0.04, 0.04, 0.071), Color(0.55, 0.65, 0.25))  # eyes
 		for i in 2:
 			k.box(_head, Vector3(0.12, 0.004, 0.004), Vector3(s * 0.08, -0.02 + i * 0.015, 0.09), Color(0.95, 0.95, 0.9), {"rot": Vector3(0, s * 15, 0)})  # whiskers
-	k.ring(_head, 0.06, 0.075, Vector3(0, -0.06, -0.02), Color(0.7, 0.15, 0.12), Vector3(90, 0, 0))  # collar
+	_collar = k.ring(_head, 0.06, 0.075, Vector3(0, -0.06, -0.02), Color(0.7, 0.15, 0.12), Vector3(90, 0, 0))
+	_collar.visible = false  # it's on Grace's nightstand at No. 6
 	for x in [-0.06, 0.06]:
 		for z in [-0.14, 0.14]:
 			var hip := k.group(self, Vector3(x, 0.18, z), 0)
@@ -54,14 +64,38 @@ func build(k: Kit) -> void:
 		"The cat flinches and backs away. Maybe next time.",
 		"The cat sniffs your hand, then lets you touch its ears.",
 		"The cat purrs. It seems to have decided you're alright.",
-		"The cat headbutts your knee. Its collar tag says BISCUIT.",
+		"The cat headbutts your knee. Grace called him Biscuit. It suits him.",
 		"Biscuit purrs.",
 	])
 	pet.used.connect(on_petted)
+	_pet = pet
 
 
 func _ready() -> void:
 	_target = global_position
+	add_to_group("cat")
+
+
+## Called when you fill the bowl: walk in through the front door and eat.
+func come_eat(bowl: Vector3) -> void:
+	bowl.y = 0.0
+	_route.clear()
+	if global_position.z > -8.5:  # outside
+		_route.append(DOOR_OUT)
+		_route.append(DOOR_IN)
+	_route.append(bowl + Vector3(0, 0, -0.3))
+	_eating = 0.0
+
+
+## Called from the backpack once Biscuit trusts you enough.
+func wear_collar() -> void:
+	_collar.visible = true
+
+
+func _bump_trust() -> void:
+	trust += 1
+	if _pet:
+		_pet.times_used = maxi(_pet.times_used, trust)
 
 
 func on_petted(times: int) -> void:
@@ -75,7 +109,26 @@ func _process(delta: float) -> void:
 	to_player.y = 0.0
 	var dist := to_player.length()
 
-	if trust == 0 and dist < 1.8:
+	if not _route.is_empty():
+		# On the way to the food bowl.
+		_target = _route[0]
+		_speed = 1.5
+		var flat := _target - global_position
+		flat.y = 0.0
+		if flat.length() < 0.15:
+			_route.pop_front()
+			if _route.is_empty():
+				_eating = 6.0
+	elif _eating > 0.0:
+		_eating -= delta
+		_target = global_position
+		if _eating <= 0.0:
+			_bump_trust()
+			get_tree().call_group("cat_bowl", "eaten")
+			# Biscuit has decided your house is his house now.
+			home = Vector3(2.0, 0, -9.15)
+			_home_radius = 0.8
+	elif trust == 0 and dist < 1.8:
 		# Too shy: back away from the player.
 		_target = global_position - to_player.normalized() * 2.0
 		_speed = 2.2
@@ -87,7 +140,7 @@ func _process(delta: float) -> void:
 		_wait -= delta
 		if _wait <= 0.0:
 			_wait = randf_range(2.0, 6.0)
-			_target = home + Vector3(randf_range(-2.5, 2.5), 0, randf_range(-2.0, 2.0))
+			_target = home + Vector3(randf_range(-_home_radius, _home_radius), 0, randf_range(-_home_radius, _home_radius) * 0.8)
 			_speed = 1.0
 
 	_target.y = global_position.y

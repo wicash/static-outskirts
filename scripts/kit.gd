@@ -245,6 +245,15 @@ func thing(parent: Node, size: Vector3, pos: Vector3, prompt: String, lines: Arr
 	return body
 
 
+## A place to search (cupboard, drawer, glovebox). Gives its loot once.
+func search(parent: Node, size: Vector3, pos: Vector3, prompt: String, found: String, loot: Array, journal := "") -> StaticBody3D:
+	var t := thing(parent, size, pos, prompt, [found, "Nothing else in here."])
+	t.gives = loot
+	t.journal = journal
+	t.empty_prompt = prompt + " (searched)"
+	return t
+
+
 ## A block you can press E on.
 func thing_box(parent: Node, size: Vector3, pos: Vector3, color: Color, prompt: String, lines: Array, opts := {}) -> StaticBody3D:
 	var t := thing(parent, size, pos, prompt, lines, opts.get("script", Interactable))
