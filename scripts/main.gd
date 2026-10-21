@@ -11,10 +11,11 @@ const Cars := preload("res://scripts/cars.gd")
 const Houses := preload("res://scripts/houses.gd")
 const Street := preload("res://scripts/street.gd")
 const Survivor := preload("res://scripts/survivor.gd")
+const DayNight := preload("res://scripts/daynight.gd")
+const RadioDial := preload("res://scripts/radio_dial.gd")
 
 ## How many screen pixels make up one game pixel. Bigger = chunkier.
 const PIXEL_SIZE := 2
-const FOG := Color(0.55, 0.52, 0.47)
 
 var world: Node3D
 var player: CharacterBody3D
@@ -24,9 +25,15 @@ var _prompt: Label
 var _message: Label
 var _message_time := 0.0
 var _hint: Label
+var _clock_label: Label
+var _dial: Control
+var _fade: ColorRect
+var clock: Node
+var _radio: Node = null  # the radio being tuned, if any
 
 
 func _ready() -> void:
+	add_to_group("game")
 	_setup_input()
 	_setup_view()
 	_setup_hud()
@@ -51,6 +58,8 @@ func _setup_input() -> void:
 		"run": [KEY_SHIFT],
 		"interact": [KEY_E],
 		"toggle_view": [KEY_V],
+		"torch": [KEY_F],
+		"skip_hour": [KEY_T],
 	}
 	for action in keys:
 		if not InputMap.has_action(action):
@@ -95,8 +104,8 @@ func _setup_hud() -> void:
 
 	_message = _label(hud, 22)
 	_message.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	_message.offset_top = -200
-	_message.offset_bottom = -110
+	_message.offset_top = -240
+	_message.offset_bottom = -140
 	_message.offset_left = 200
 	_message.offset_right = -200
 	_message.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
@@ -105,7 +114,29 @@ func _setup_hud() -> void:
 	_hint = _label(hud, 16)
 	_hint.position = Vector2(20, 16)
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_hint.text = "Click to look around   WASD move   Shift run   E interact   V switch view   Esc free mouse"
+	_hint.text = "Click to look around   WASD move   Shift run   E interact   V switch view   F torch   T skip an hour   Esc free mouse"
+
+	_clock_label = _label(hud, 18)
+	_clock_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_clock_label.offset_left = -220
+	_clock_label.offset_right = -20
+	_clock_label.offset_top = 16
+	_clock_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+
+	_dial = RadioDial.new()
+	_dial.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	_dial.offset_left = -300
+	_dial.offset_right = 300
+	_dial.offset_top = -95
+	_dial.offset_bottom = -15
+	_dial.visible = false
+	hud.add_child(_dial)
+
+	_fade = ColorRect.new()
+	_fade.color = Color(0, 0, 0, 0)
+	_fade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_fade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(_fade)
 
 	var dot := _label(hud, 16)
 	dot.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
@@ -139,6 +170,11 @@ func _build_environment() -> void:
 	sun.light_energy = 0.7
 	sun.rotation_degrees = Vector3(-35, 40, 0)
 	world.add_child(sun)
+
+	clock = DayNight.new()
+	clock.env = env
+	clock.sun = sun
+	add_child(clock)
 
 
 # --- Places ------------------------------------------------------------------
@@ -327,6 +363,57 @@ func _fill_wind() -> void:
 		_wind.push_frame(Vector2(v, v * 0.9))
 
 
+# --- Radio, sleep -----------------------------------------------------------
+
+## Called by the radio when you press E on it.
+func start_tuning(radio: Node) -> void:
+	_radio = radio
+	_radio.tuning = true
+	if not _radio.heard.is_connected(_show_message):
+		_radio.heard.connect(_show_message)
+	player.frozen = true
+	_dial.visible = true
+	_prompt.offset_top = -135
+	_prompt.offset_bottom = -105
+	_prompt.text = "[A/D or scroll] turn the dial   [Shift] fine tune   [E] stop"
+
+
+func stop_tuning() -> void:
+	_radio.tuning = false
+	_radio = null
+	_dial.visible = false
+	_prompt.text = ""
+	_prompt.offset_top = -90
+	_prompt.offset_bottom = -60
+	# Wait a moment so the same E press doesn't start tuning again.
+	await get_tree().create_timer(0.2).timeout
+	player.frozen = false
+
+
+## Called by your bed in the evening: fade out, sleep, wake up at 7.
+func sleep() -> void:
+	player.frozen = true
+	var t := create_tween()
+	t.tween_property(_fade, "color:a", 1.0, 1.5)
+	await t.finished
+	clock.sleep_until_morning()
+	await get_tree().create_timer(1.0).timeout
+	_show_message(_morning_line(clock.day))
+	var t2 := create_tween()
+	t2.tween_property(_fade, "color:a", 0.0, 2.0)
+	await t2.finished
+	player.frozen = false
+
+
+func _morning_line(day: int) -> String:
+	var lines := [
+		"Morning. Biscuit is asleep on your feet, which explains the dream about sandbags.",
+		"Morning. Grey light, cold floor. The kettle first, then everything else.",
+		"Morning. You dreamt the radio was saying your name.",
+	]
+	return "Day %d. " % day + lines[(day - 2) % lines.size()]
+
+
 # --- Per-frame ---------------------------------------------------------------
 
 func _show_message(text: String) -> void:
@@ -337,6 +424,12 @@ func _show_message(text: String) -> void:
 
 func _process(delta: float) -> void:
 	_fill_wind()
+	_clock_label.text = clock.clock_text()
+	if _radio:
+		var speed := 0.5 if Input.is_action_pressed("run") else 2.5
+		_radio.turn(Input.get_axis("move_left", "move_right") * speed * delta)
+		_dial.freq = _radio.freq
+		_dial.signal_strength = _radio.strength()
 	if _message_time > 0.0:
 		_message_time -= delta
 		_message.modulate.a = clampf(_message_time, 0.0, 1.0)
@@ -345,6 +438,19 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _radio:
+		if event is InputEventMouseButton and event.pressed:
+			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+				_radio.turn(0.1)
+			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				_radio.turn(-0.1)
+		if event.is_action_pressed("interact") or event.is_action_pressed("ui_cancel"):
+			stop_tuning()
+			get_viewport().set_input_as_handled()
+			return
+	if event.is_action_pressed("skip_hour") and _radio == null:
+		clock.skip(1.0)
+		_show_message("You let an hour slip by. " + clock.clock_text().split("   ")[1])
 	if event is InputEventMouseButton and event.pressed:
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	elif event.is_action_pressed("ui_cancel"):
@@ -379,12 +485,25 @@ func _maybe_take_screenshot() -> void:
 		"--crash": [Vector3(-15.5, 0.1, -0.8), 0.83, 40.0],
 		"--van": [Vector3(19.5, 0.1, 6.0), -0.75, 40.0],
 		"--cat": [Vector3(1.5, 0.1, -4.6), 0.0, 120.0],
+		"--road": [Vector3(-6, 0.1, -1.0), -1.4, -12.0],
 	}
 	for key in views:
 		if key in args:
 			player.position = views[key][0]
 			player.rotation.y = views[key][1]
 			player.look(Vector2(0, views[key][2]))
+	if "--dusk" in args:
+		clock.hour = 18.6
+	if "--night" in args:
+		clock.hour = 22.5
+	clock.running = false
+	clock.apply()
+	if "--torch" in args:
+		player.torch.visible = true
+	if "--tuning" in args:
+		var radio := get_tree().get_first_node_in_group("radio")
+		radio.interact()
+		radio.freq = 104.1
 	if "--third" in args or "--face" in args:
 		player.toggle_view()
 	if "--face" in args:

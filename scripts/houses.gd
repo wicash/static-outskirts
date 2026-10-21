@@ -6,6 +6,7 @@ extends RefCounted
 const Kit := preload("res://scripts/kit.gd")
 const Furniture := preload("res://scripts/furniture.gd")
 const Radio := preload("res://scripts/radio.gd")
+const Bed := preload("res://scripts/bed.gd")
 
 const T := 0.2          # wall thickness
 const DOOR_W := 1.0
@@ -249,7 +250,7 @@ func your_house(parent: Node, pos: Vector3) -> Node3D:
 
 	# Bedroom.
 	f.bed(h, Vector3(-2.75, 0, -2.3), 0, 0.95, Kit.FABRIC_BLUE)
-	k.thing(h, Vector3(0.95, 0.6, 2.0), Vector3(-2.75, 0.3, -2.3), "Lie down", ["Not yet. There's still some light out."])
+	k.thing(h, Vector3(0.95, 0.6, 2.0), Vector3(-2.75, 0.3, -2.3), "Go to bed", [], Bed)
 	f.nightstand(h, Vector3(-1.9, 0, -3.05), 0)
 	f.candle(h, Vector3(-1.95, 0.5, -3.1), true)
 	var photo := k.thing(h, Vector3(0.14, 0.18, 0.06), Vector3(-1.75, 0.6, -3.1), "Look at the photo",

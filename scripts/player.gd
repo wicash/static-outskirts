@@ -11,6 +11,9 @@ const REACH := 2.6
 const THIRD_PERSON_DISTANCE := 3.0
 
 var third_person := false
+## True while sitting at the radio or asleep: no walking or interacting.
+var frozen := false
+var torch: SpotLight3D
 var _pitch := 0.0
 var _focus: Node = null
 
@@ -46,6 +49,17 @@ func _ready() -> void:
 	arm.add_child(camera)
 	camera.make_current()
 
+	# Sam's little keyring torch. F switches it on and off.
+	torch = SpotLight3D.new()
+	torch.light_color = Color(1.0, 0.92, 0.75)
+	torch.light_energy = 4.0
+	torch.spot_range = 16.0
+	torch.spot_angle = 32.0
+	torch.spot_attenuation = 0.4
+	torch.visible = false
+	head.add_child(torch)
+	torch.position = Vector3(0.15, -0.15, 0)
+
 	_step_audio = AudioStreamPlayer.new()
 	_step_audio.stream = _make_step_sound()
 	_step_audio.volume_db = -14.0
@@ -77,6 +91,16 @@ func toggle_view() -> void:
 func _physics_process(delta: float) -> void:
 	if not is_on_floor():
 		velocity += get_gravity() * delta
+
+	if frozen:
+		velocity.x = 0.0
+		velocity.z = 0.0
+		move_and_slide()
+		if body and body.has_method("animate"):
+			body.animate(0.0, delta)
+		return
+	if Input.is_action_just_pressed("torch"):
+		torch.visible = not torch.visible
 
 	var input := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
 	var dir := (transform.basis * Vector3(input.x, 0, input.y)).normalized()

@@ -18,3 +18,14 @@ window/size/viewport_height=720
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/canvas_textures/default_texture_filter=0
+
+[shader_globals]
+
+world_fog={
+"type": "color",
+"value": Color(0.55, 0.52, 0.47, 1)
+}
+fog_scale={
+"type": "float",
+"value": 1.0
+}

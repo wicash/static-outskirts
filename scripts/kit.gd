@@ -55,7 +55,6 @@ func mat(color: Color, pattern := Pattern.PLAIN, glow := 0.0, fog_end := 70.0) -
 	m.shader = PS1
 	m.set_shader_parameter("albedo", color)
 	m.set_shader_parameter("grain", grain)
-	m.set_shader_parameter("fog_color", FOG)
 	m.set_shader_parameter("pattern", pattern)
 	m.set_shader_parameter("emission", glow)
 	m.set_shader_parameter("fog_end", fog_end)
@@ -73,7 +72,6 @@ func glass_mat(dirt := 0.35, tint := Color(0.55, 0.62, 0.66, 0.28)) -> ShaderMat
 	m.set_shader_parameter("grain", grain)
 	m.set_shader_parameter("dirt", dirt)
 	m.set_shader_parameter("tint", tint)
-	m.set_shader_parameter("fog_color", FOG)
 	_materials[key] = m
 	return m
 

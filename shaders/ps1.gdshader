@@ -12,7 +12,8 @@ uniform float grain_amount = 0.14;
 uniform float tex_scale = 1.5;
 uniform int pattern = 0;
 uniform float snap_res = 260.0;
-uniform vec3 fog_color : source_color = vec3(0.55, 0.52, 0.47);
+global uniform vec4 world_fog;
+global uniform float fog_scale;
 uniform float fog_start = 6.0;
 uniform float fog_end = 70.0;
 uniform float emission = 0.0;
@@ -43,7 +44,7 @@ void vertex() {
 	POSITION = clip;
 	// Multiply by w here and divide in fragment() to undo perspective correction.
 	affine_uv = vec3(uv * clip.w, clip.w);
-	fog = clamp((length(view.xyz) - fog_start) / (fog_end - fog_start), 0.0, 1.0);
+	fog = clamp((length(view.xyz) - fog_start * fog_scale) / ((fog_end - fog_start) * fog_scale), 0.0, 1.0);
 }
 
 void fragment() {
@@ -80,5 +81,5 @@ void fragment() {
 	c *= shade;
 
 	ALBEDO = c * (1.0 - fog);
-	EMISSION = fog_color * fog + c * emission * (1.0 - fog);
+	EMISSION = world_fog.rgb * fog + c * emission * (1.0 - fog);
 }

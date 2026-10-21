@@ -6,7 +6,8 @@ uniform vec4 tint : source_color = vec4(0.55, 0.62, 0.66, 0.28);
 uniform float dirt = 0.35;
 uniform sampler2D grain : source_color, filter_nearest, repeat_enable;
 uniform float snap_res = 260.0;
-uniform vec3 fog_color : source_color = vec3(0.55, 0.52, 0.47);
+global uniform vec4 world_fog;
+global uniform float fog_scale;
 uniform float fog_start = 6.0;
 uniform float fog_end = 70.0;
 
@@ -25,7 +26,7 @@ void vertex() {
 	}
 	POSITION = clip;
 	affine_uv = vec3(uv * clip.w, clip.w);
-	fog = clamp((length(view.xyz) - fog_start) / (fog_end - fog_start), 0.0, 1.0);
+	fog = clamp((length(view.xyz) - fog_start * fog_scale) / ((fog_end - fog_start) * fog_scale), 0.0, 1.0);
 }
 
 void fragment() {
@@ -34,6 +35,6 @@ void fragment() {
 	float g = texture(grain, m * 4.0).r;
 	float grime = smoothstep(0.45, 0.8, g) * dirt;
 	vec3 c = mix(tint.rgb, vec3(0.7, 0.68, 0.62), grime);
-	ALBEDO = mix(c, fog_color, fog);
+	ALBEDO = mix(c, world_fog.rgb, fog);
 	ALPHA = mix(tint.a + grime * 0.5, 1.0, fog);
 }
