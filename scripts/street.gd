@@ -402,6 +402,7 @@ func _ash() -> void:
 
 func _edges() -> void:
 	# Invisible walls at the edge of the test area.
-	for wall in [[Vector3(100, 10, 1), Vector3(0, 5, -48)], [Vector3(100, 10, 1), Vector3(0, 5, 28)],
-			[Vector3(1, 10, 80), Vector3(-45, 5, -10)], [Vector3(1, 10, 80), Vector3(45, 5, -10)]]:
+	# The east wall is past the railway on Mill Road (see east.gd).
+	for wall in [[Vector3(155, 10, 1), Vector3(31.5, 5, -48)], [Vector3(155, 10, 1), Vector3(31.5, 5, 28)],
+			[Vector3(1, 10, 80), Vector3(-45, 5, -10)], [Vector3(1, 10, 80), Vector3(108, 5, -10)]]:
 		k.blocker(world, wall[0], wall[1])

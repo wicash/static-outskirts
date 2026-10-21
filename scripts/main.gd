@@ -20,6 +20,8 @@ const Paper := preload("res://scripts/paper.gd")
 const Weather := preload("res://scripts/weather.gd")
 const SaveGame := preload("res://scripts/save_game.gd")
 const Title := preload("res://scripts/title.gd")
+const East := preload("res://scripts/east.gd")
+const Walkie := preload("res://scripts/walkie.gd")
 
 ## How many screen pixels make up one game pixel. Bigger = chunkier.
 const PIXEL_SIZE := 2
@@ -42,12 +44,17 @@ var cat: Node3D
 var weather: Node
 var _comfort_label: Label
 var _title: Control
+var _toasts: VBoxContainer
+var _walkie: Node3D = null
+var _walkie_label: Label
+var _chime_small: AudioStreamPlayer
+var _chime_big: AudioStreamPlayer
 
 # What Sam carries and what she has written down.
 var inventory := {}            # item id -> count
 var journal_entries: Array = []  # [day, text]
 var _paper: Control
-var _paper_mode := ""          # "", "journal" or "backpack"
+var _paper_mode := ""          # "", "journal", "backpack" or "map"
 var _journal_hint: Label
 
 # Tom's tape, when it's playing.
@@ -112,6 +119,8 @@ func _setup_input() -> void:
 		"geiger": [KEY_G],
 		"backpack": [KEY_TAB],
 		"journal": [KEY_J],
+		"map": [KEY_M],
+		"walkie": [KEY_R],
 	}
 	for action in keys:
 		if not InputMap.has_action(action):
@@ -166,7 +175,7 @@ func _setup_hud() -> void:
 	_hint = _label(hud, 14)
 	_hint.position = Vector2(20, 16)
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_hint.text = "Click to look   WASD move   Shift run   E use   V view   F torch   Tab backpack   J journal   T skip hour"
+	_hint.text = "Click to look   WASD move   Shift run   E use   V view   F torch   Tab backpack   J journal   M map   T skip hour"
 
 	_journal_hint = _label(hud, 16)
 	_journal_hint.position = Vector2(20, 44)
@@ -179,6 +188,34 @@ func _setup_hud() -> void:
 	_comfort_label.offset_right = -20
 	_comfort_label.offset_top = 42
 	_comfort_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+
+	# Pickups and finds pop up on the right and fade away.
+	_toasts = VBoxContainer.new()
+	_toasts.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
+	_toasts.offset_left = -620
+	_toasts.offset_right = -24
+	_toasts.offset_top = -120
+	_toasts.offset_bottom = 120
+	_toasts.alignment = BoxContainer.ALIGNMENT_END
+	_toasts.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(_toasts)
+
+	_walkie_label = _label(hud, 18)
+	_walkie_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	_walkie_label.offset_left = 24
+	_walkie_label.offset_top = -60
+	_walkie_label.offset_right = 420
+	_walkie_label.offset_bottom = -28
+	_walkie_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+
+	_chime_small = AudioStreamPlayer.new()
+	_chime_small.stream = _make_chime([0, 7], 0.07)
+	_chime_small.volume_db = -14.0
+	add_child(_chime_small)
+	_chime_big = AudioStreamPlayer.new()
+	_chime_big.stream = _make_chime([0, 4, 7, 12, 16], 0.08)
+	_chime_big.volume_db = -11.0
+	add_child(_chime_big)
 
 	_paper = Paper.new()
 	hud.add_child(_paper)
@@ -269,6 +306,7 @@ func _build_alder_street() -> void:
 		{"x": 16.0, "z": 12.0, "door": 16.0, "number": "7"},
 	])
 	Aftermath.new(kit, world).build()
+	East.new(kit, world).build()
 
 
 func _build_cars() -> void:
@@ -511,6 +549,8 @@ func comfort() -> int:
 	var radio := get_tree().get_first_node_in_group("radio")
 	if radio and radio.on and absf(radio.freq - 96.4) < 0.3:
 		c += 1
+	if found_count("memory") >= 4:
+		c += 1  # the lost things on the board make it feel lived in
 	return c
 
 
@@ -546,6 +586,7 @@ func _on_title(choice: String) -> void:
 		return
 	if choice == "continue":
 		SaveGame.load_into(self)
+		_refresh_memory_board()
 		weather.set_day(clock.day)
 		clock.refresh_night_things()
 	_title.queue_free()
@@ -583,9 +624,184 @@ func add_items(ids: Array) -> String:
 		inventory[id] = inventory.get(id, 0) + 1
 		counts[id] = counts.get(id, 0) + 1
 	var parts: Array[String] = []
+	var key := false
 	for id in counts:
 		parts.append(("%d x %s" % [counts[id], Items.name_of(id)]) if counts[id] > 1 else Items.name_of(id))
+		if id in Items.KEY_ITEMS:
+			key = true
+			toast("★  " + Items.name_of(id), GOLD)
+			_remind_locks(id)
+		else:
+			toast("+  " + Items.name_of(id) + ("  x%d" % counts[id] if counts[id] > 1 else ""))
+	chime(key)
+	if counts.has("walkie"):
+		toast("Hold R to listen for Ranger caches", GOLD.lightened(0.3))
 	return "(Into your backpack: %s)" % ", ".join(parts)
+
+
+# --- Pickups, finds and the map ------------------------------------------------------
+
+const GOLD := Color(1.0, 0.82, 0.35)
+
+
+## A line that pops up on the right and fades.
+func toast(text: String, color := Color(0.93, 0.9, 0.82)) -> void:
+	var l := _label(_toasts, 19)
+	l.text = text
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	l.add_theme_color_override("font_color", color)
+	while _toasts.get_child_count() > 6:
+		_toasts.get_child(0).free()
+	l.modulate.a = 0.0
+	var t := l.create_tween()
+	t.tween_property(l, "modulate:a", 1.0, 0.15)
+	t.tween_interval(4.0)
+	t.tween_property(l, "modulate:a", 0.0, 1.2)
+	t.tween_callback(l.queue_free)
+
+
+## A little rising chime; `key` is the bigger one for tools and finds.
+func chime(key := false) -> void:
+	var p := _chime_big if key else _chime_small
+	if p:
+		p.play()
+
+
+func _make_chime(notes: Array, step: float) -> AudioStreamWAV:
+	var rate := 22050
+	var total := int(rate * (step * notes.size() + 0.7))
+	var data := PackedByteArray()
+	data.resize(total * 2)
+	for i in total:
+		var t := float(i) / rate
+		var v := 0.0
+		for n in notes.size():
+			var dt := t - n * step
+			if dt >= 0.0:
+				var hz := 880.0 * pow(2.0, notes[n] / 12.0)
+				v += sin(TAU * hz * dt) * exp(-dt * 7.0) * 0.22 + sin(TAU * hz * 2.0 * dt) * exp(-dt * 12.0) * 0.05
+		data.encode_s16(i * 2, int(clampf(v, -1.0, 1.0) * 30000.0))
+	var w := AudioStreamWAV.new()
+	w.format = AudioStreamWAV.FORMAT_16_BITS
+	w.mix_rate = rate
+	w.data = data
+	return w
+
+
+## When you get a tool, remind the player of the locks it might open.
+func _remind_locks(id: String) -> void:
+	for l in get_tree().get_nodes_in_group("lock"):
+		if l.tried and not l.is_open and l.needs == id:
+			toast("You remember: " + l.lock_name, GOLD.lightened(0.3))
+
+
+func found_count(kind: String) -> int:
+	var n := 0
+	for c in get_tree().get_nodes_in_group(kind):
+		if c.found():
+			n += 1
+	return n
+
+
+## Called by a glinting find (collectible.gd) the first time you pick it up.
+func collected(kind: String) -> void:
+	var n := found_count(kind)
+	var total := get_tree().get_nodes_in_group(kind).size()
+	if kind == "memory":
+		toast("Lost things  %d / %d" % [n, total], GOLD)
+		_refresh_memory_board()
+		if n == total:
+			_show_message("That's all of them. Every lost thing on Mill Road and Alder Street, safe on your board at home.")
+			write_journal("Nine lost things on the board at home. I don't know most of these people. I'm keeping their things safe anyway.")
+	else:
+		toast("Ranger caches  %d / %d" % [n, total], Color(0.6, 1.0, 0.6))
+		if n == total:
+			_show_message("That's all six of Ranger Wren's caches.")
+			write_journal("All six of Ranger Wren's caches. Every note says the same thing in a different way: you're not the only one left. She says come up the trail. Bring the cat.")
+
+
+## Shows one pinned thing on the board at home for each lost thing found.
+func _refresh_memory_board() -> void:
+	var n := found_count("memory")
+	for slot in get_tree().get_nodes_in_group("memory_slot"):
+		slot.visible = int(slot.get_meta("i")) < n
+
+
+const AREAS := [["alder", "Alder Street"], ["savoy", "The Savoy garage"], ["allotments", "Mill Road allotments"], ["train", "The 6:40 train"]]
+
+
+func _open_map() -> void:
+	var searched := {}
+	var total := {}
+	for n in SaveGame.interactables(world, cat):
+		if n.empty_prompt == "" or n.has_method("found"):
+			continue  # only places you search
+		var a: String = n.get_meta("area", "alder")
+		total[a] = total.get(a, 0) + 1
+		if n.times_used > 0:
+			searched[a] = searched.get(a, 0) + 1
+	var text := "[b]Places[/b]\n"
+	for a in AREAS:
+		var t: int = total.get(a[0], 0)
+		var s: int = searched.get(a[0], 0)
+		text += "  %s   %s  %d / %d searched\n" % [("✓" if s == t and t > 0 else "·"), a[1], s, t]
+	text += "\n[b]Ranger caches  %d / %d[/b]" % [found_count("cache"), get_tree().get_nodes_in_group("cache").size()]
+	text += ("   [i](hold R to listen on the walkie)[/i]\n" if has_item("walkie") else "   [i](green tins marked R)[/i]\n")
+	text += _found_titles("cache")
+	text += "\n[b]Lost things  %d / %d[/b]   [i](they glint)[/i]\n" % [found_count("memory"), get_tree().get_nodes_in_group("memory").size()]
+	text += _found_titles("memory")
+	var locked := ""
+	var unknown := 0
+	for l in get_tree().get_nodes_in_group("lock"):
+		if l.is_open:
+			locked += "  ✓  %s\n" % l.lock_name
+		elif l.tried:
+			var ready := has_item(l.needs)
+			locked += "  %s  %s   [i]%s[/i]\n" % ["★" if ready else "✗", l.lock_name, "You have the tool!" if ready else l.tool_hint]
+		else:
+			unknown += 1
+	text += "\n[b]Locked doors[/b]\n" + locked
+	if unknown > 0:
+		text += "  [i]%d more you haven't tried yet.[/i]\n" % unknown
+	var today := ""
+	var crop := get_tree().get_first_node_in_group("harvest")
+	if crop and crop.times_used > 0:
+		today += "  Greenhouse tomatoes: %s\n" % ("picked" if crop.picked_day == clock.day else "ripe")
+	var bowl := get_tree().get_first_node_in_group("cat_bowl")
+	if bowl:
+		today += "  Biscuit: %s\n" % ("fed" if bowl.fed_day == clock.day else "hungry")
+	text += "\n[b]Today[/b]\n" + today
+	_paper.open("Map of the outskirts", text, "M or Esc to close")
+	_paper_mode = "map"
+	_paper_opened()
+
+
+func _found_titles(kind: String) -> String:
+	var out := ""
+	for c in get_tree().get_nodes_in_group(kind):
+		if c.found():
+			out += "  ✓  " + c.title + "\n"
+	return out
+
+
+func _update_walkie() -> void:
+	if _walkie == null:
+		if not has_item("walkie"):
+			_walkie_label.text = ""
+			return
+		_walkie = Walkie.new()
+		player.add_child(_walkie)
+	var listening: bool = Input.is_action_pressed("walkie") and not player.frozen and _title == null
+	_walkie.listening = listening
+	if not listening:
+		_walkie_label.text = ""
+		return
+	if found_count("cache") == get_tree().get_nodes_in_group("cache").size():
+		_walkie_label.text = "Walkie   just static now"
+		return
+	var bars := int(round(_walkie.strength * 6.0))
+	_walkie_label.text = "Walkie   " + "▮".repeat(bars) + "▯".repeat(6 - bars)
+	_walkie_label.add_theme_color_override("font_color", Color(0.75, 0.9, 0.7).lerp(Color(0.6, 1.0, 0.5), _walkie.strength))
 
 
 ## Sam writes a line in her journal (once per day for each line).
@@ -632,6 +848,13 @@ func _open_backpack() -> void:
 		_paper.add_button("Play the tape (you need something to play it on)", func(): pass)
 	if has_item("collar"):
 		_paper.add_button("Put the collar on Biscuit", _give_collar)
+	var radio := get_tree().get_first_node_in_group("radio")
+	if has_item("antenna") and radio and not radio.antenna:
+		_paper.add_button("Hang the antenna from the radio", _fit_antenna)
+	if has_item("tomatoes"):
+		_paper.add_button("Eat a tomato", _eat.bind("tomatoes"))
+	if has_item("rations"):
+		_paper.add_button("Eat a ration pack", _eat.bind("rations"))
 	for food in ["peaches", "biscuits", "soup"]:
 		if has_item(food):
 			_paper.add_button("Eat the %s" % Items.name_of(food).to_lower(), _eat.bind(food))
@@ -664,6 +887,19 @@ func _give_collar() -> void:
 	write_journal("Biscuit has his collar back. If Grace comes home, he'll be wearing it.")
 
 
+func _fit_antenna() -> void:
+	_close_paper()
+	if not _in_your_house():
+		_show_message("Better do this at home, by the radio.")
+		return
+	var radio := get_tree().get_first_node_in_group("radio")
+	radio.antenna = true
+	take_item("antenna")
+	chime(true)
+	_show_message("You clip the wire to the radio's aerial and run it up along the curtain rail. When you turn the dial, somewhere around 99, the static changes shape.")
+	write_journal("Hung the guard's antenna from the radio. There's something new around 99 on the dial.")
+
+
 func _eat(food: String) -> void:
 	take_item(food)
 	_close_paper()
@@ -671,6 +907,8 @@ func _eat(food: String) -> void:
 		"peaches": "You eat the peaches straight from the tin, slowly. Today is a good day.",
 		"biscuits": "Custard creams, slightly soft. You eat three and save the rest for later. You eat the rest.",
 		"soup": "Cold tomato soup from the tin. You've had worse. You've had better. You feel warmer anyway.",
+		"tomatoes": "You eat a tomato like an apple, standing up. It tastes like summer used to.",
+		"rations": "Oats, dried fruit and a chocolate bar. You eat the chocolate first, as instructed.",
 	}
 	_show_message(lines[food])
 	write_journal("Ate the %s." % Items.name_of(food).to_lower())
@@ -733,6 +971,7 @@ func _process(delta: float) -> void:
 	_update_tape(delta)
 	_clock_label.text = clock.clock_text() + ("   " + weather.label() if weather else "")
 	_comfort_label.text = _comfort_text() if _in_your_house() else ""
+	_update_walkie()
 	if _radio:
 		var speed := 0.5 if Input.is_action_pressed("run") else 2.5
 		_radio.turn(Input.get_axis("move_left", "move_right") * speed * delta)
@@ -750,7 +989,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _paper_mode != "":
 		if event.is_action_pressed("ui_cancel") or (event.is_action_pressed("journal") and _paper_mode == "journal") \
-				or (event.is_action_pressed("backpack") and _paper_mode == "backpack"):
+				or (event.is_action_pressed("backpack") and _paper_mode == "backpack") \
+				or (event.is_action_pressed("map") and _paper_mode == "map"):
 			_close_paper()
 			get_viewport().set_input_as_handled()
 		return
@@ -760,6 +1000,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 		if event.is_action_pressed("backpack"):
 			_open_backpack()
+			return
+		if event.is_action_pressed("map"):
+			_open_map()
 			return
 	if _radio:
 		if event is InputEventMouseButton and event.pressed:
@@ -811,9 +1054,75 @@ func _selftest() -> void:
 	for spot in get_tree().get_nodes_in_group("candle_spot"):
 		print("candle -> ", spot.interact())
 	print("comfort ", comfort(), " ", _comfort_text())
+	await _selftest_mill_road()
 	SaveGame.save(self)
 	print("saved")
 	get_tree().quit()
+
+
+func _node_with_prompt(p: String) -> Node:
+	for n in SaveGame.interactables(world, cat):
+		if n.prompt == p:
+			return n
+	print("MISSING: ", p)
+	return null
+
+
+func _lock_named(name: String) -> Node:
+	for l in get_tree().get_nodes_in_group("lock"):
+		if l.lock_name == name:
+			return l
+	print("MISSING LOCK: ", name)
+	return null
+
+
+## The Mill Road tool chain, start to finish.
+func _selftest_mill_road() -> void:
+	print("--- Mill Road ---")
+	print("caches ", get_tree().get_nodes_in_group("cache").size(), " memories ", get_tree().get_nodes_in_group("memory").size(), " locks ", get_tree().get_nodes_in_group("lock").size())
+	var gate := _lock_named("The level crossing gate")
+	print("gate (no tool) -> ", gate.interact(), " | ", gate.interact(), " tried ", gate.tried)
+	var back := _lock_named("The garage back room")
+	print("back room (no tool) -> ", back.interact())
+	print("van -> ", _node_with_prompt("Search the delivery van").interact())
+	print("back room -> ", back.interact(), " open ", back.is_open)
+	print("workbench -> ", _node_with_prompt("Search the workbench").interact())
+	print("gate -> ", gate.interact(), " open ", gate.is_open)
+	for l in get_tree().get_nodes_in_group("lock"):
+		if not l.is_open:
+			print(l.lock_name, " -> ", l.interact())
+	print("locker -> ", _node_with_prompt("Search the guard's locker").interact())
+	print("walkie -> ", _node_with_prompt("Pick up the walkie-talkie").interact())
+	await get_tree().process_frame
+	print("walkie node ", _walkie != null, " strength ", _walkie.strength if _walkie else -1.0)
+	player.position = Vector3(0.6, 0.1, -10.5)
+	await get_tree().physics_frame
+	await get_tree().physics_frame
+	_fit_antenna()
+	var radio := get_tree().get_first_node_in_group("radio")
+	print("antenna ", radio.antenna, " ranger -> ", radio._station_text("ranger", 1.0))
+	print("tomatoes -> ", _node_with_prompt("Pick tomatoes").interact())
+	print("tomatoes again -> ", _node_with_prompt("Pick tomatoes").interact())
+	for kind in ["cache", "memory"]:
+		for c in get_tree().get_nodes_in_group(kind):
+			var line: String = c.interact()
+			print(kind, " ", c.title, " -> ", line.left(60))
+	print("ranger after -> ", radio._station_text("ranger", 1.0))
+	print("board slots shown ", get_tree().get_nodes_in_group("memory_slot").filter(func(n): return n.visible).size())
+	_open_map()
+	print(_paper._body.get_parsed_text())
+	_close_paper()
+	print("comfort ", comfort())
+	# Walk up a ramp into carriage C1 (west door at z -7.5).
+	player.position = Vector3(96.4, 0.3, -7.5)
+	player.rotation.y = -PI / 2.0
+	Input.action_press("move_forward")
+	for i in 90:
+		await get_tree().physics_frame
+	Input.action_release("move_forward")
+	print("after ramp ", player.global_position)
+	# And can't walk through the closed shop wall from outside.
+	print("inventory ", inventory)
 
 
 func _loadtest() -> void:
@@ -822,6 +1131,11 @@ func _loadtest() -> void:
 	print("day ", clock.day, " inventory ", inventory)
 	print("cat trust ", cat.trust, " inside ", cat.moved_in, " comfort ", comfort())
 	print("journal lines ", journal_entries.size(), " geiger ", _geiger != null)
+	var opened := get_tree().get_nodes_in_group("lock").filter(func(l): return l.is_open).size()
+	var radio := get_tree().get_first_node_in_group("radio")
+	print("locks open ", opened, " caches ", found_count("cache"), " memories ", found_count("memory"), " antenna ", radio.antenna)
+	_refresh_memory_board()
+	print("board slots shown ", get_tree().get_nodes_in_group("memory_slot").filter(func(n): return n.visible).size())
 	get_tree().quit()
 
 
@@ -859,6 +1173,19 @@ func _maybe_take_screenshot() -> void:
 		"--wires": [Vector3(0, 0.1, -1.0), 0.6, 35.0],
 		"--shelter": [Vector3(-29, 0.1, 16.5), PI + 0.2, -15.0],
 		"--bowl": [Vector3(1.2, 0.1, -10.8), 2.6, 60.0],
+		"--millroad": [Vector3(48, 0.1, 1.5), -1.45, -5.0],
+		"--garage": [Vector3(60.5, 0.1, -2.5), -0.75, -8.0],
+		"--shop": [Vector3(65.0, 0.1, -20.5), -1.31, 12.0],
+		"--backroom": [Vector3(73.3, 0.1, -19.3), -0.25, 18.0],
+		"--allotments": [Vector3(60.0, 0.1, 9.5), -2.3, -2.0],
+		"--greenhouse": [Vector3(68.9, 0.1, 14.6), PI + 0.35, 15.0],
+		"--sheds": [Vector3(71, 0.1, 19.5), PI - 0.25, 0.0],
+		"--crossing": [Vector3(91, 0.1, 2.5), -0.81, -4.0],
+		"--carriage": [Vector3(99.6, 1.2, -4.6), PI - 0.1, 10.0],
+		"--cab": [Vector3(100.3, 1.2, -29.6), 0.15, 10.0],
+		"--signalbox": [Vector3(100.5, 0.1, -40.5), -2.6, -6.0],
+		"--no7": [Vector3(16.0, 0.1, 9.2), PI + 0.15, 8.0],
+		"--board": [Vector3(0.6, 0.1, -13.9), 1.35, -10.0],
 	}
 	for key in views:
 		if key in args:
@@ -871,6 +1198,30 @@ func _maybe_take_screenshot() -> void:
 		weather.set_kind("ash")
 	if "--title" in args:
 		_show_title()
+	if "--open" in args:
+		for l in get_tree().get_nodes_in_group("lock"):
+			l.times_used = 1
+			l.after_load()
+	if "--found" in args:
+		for c in get_tree().get_nodes_in_group("memory"):
+			c.times_used = 1
+			c.after_load()
+		_refresh_memory_board()
+	if "--map" in args:
+		add_items(["crowbar", "walkie"])
+		_lock_named("The level crossing gate").tried = true
+		_lock_named("Allotment shed 2 (Mrs Adeyemi's)").tried = true
+		_lock_named("The garage back room").times_used = 1
+		_lock_named("The garage back room").after_load()
+		for c in get_tree().get_nodes_in_group("cache").slice(0, 2):
+			c.times_used = 1
+		for c in get_tree().get_nodes_in_group("memory").slice(1, 4):
+			c.times_used = 1
+			c.after_load()
+		_open_map()
+	if "--toasts" in args:
+		add_items(["bolt_cutters", "soup", "soup"])
+		toast("Ranger caches  3 / 6", Color(0.6, 1.0, 0.6))
 	if "--candles" in args:
 		for spot in get_tree().get_nodes_in_group("candle_spot"):
 			spot.light()

@@ -7,6 +7,8 @@
 ##         you hear the next fragment (the `lines` set in houses.gd).
 ##   96.4  a music box tape on a loop (the number on the Bells' walkie-talkie).
 ##   104.1 the emergency service, still looping its "it's a drill" message.
+##   99.1  Ranger Station, Alder Hollow. Only with the guard van's antenna. Ranger
+##         Wren reads out where the caches are, one you haven't found each time.
 extends "res://scripts/interactable.gd"
 
 signal heard(text: String)
@@ -20,6 +22,17 @@ const STATIONS := {
 	"tower": 91.3,
 	"music": 96.4,
 	"emergency": 104.1,
+	"ranger": 99.1,
+}
+
+## Hints for each Ranger cache, by its title (see east.gd and houses.gd).
+const RANGER_HINTS := {
+	"Behind the Savoy": "One behind the Savoy garage, under the back window.",
+	"The scarecrow's cache": "One with the scarecrow at the allotments. He's guarding it.",
+	"In the allotment sheds": "One in the second allotment shed. Bring something for the padlock.",
+	"By the last carriage": "One by the 6:40's last carriage, on the side nobody looks at.",
+	"The boarded house": "One behind the door of number seven. Whoever's in there knows.",
+	"Where the trail meets the trees": "And one where the trail meets the trees, north of the garage.",
 }
 
 const EMERGENCY_LINES := [
@@ -35,6 +48,7 @@ const MUSIC_NOTES := [0, 4, 7, 12, 7, 4, 9, 7, 0, 4, 7, 11, 12, 11, 7, 4]
 
 var freq := 99.0
 var on := false
+var antenna := false  # the long-wire antenna from the train lets you hear 99.1
 var tuning := false
 
 var _audio: AudioStreamPlayer3D
@@ -48,8 +62,8 @@ var _phase2 := 0.0
 var _note_phase := 0.0
 var _lock := 0.0
 var _locked_on := ""
-var _heard := {"tower": 0, "music": 0, "emergency": 0}
-var _strength := {"tower": 0.0, "music": 0.0, "emergency": 0.0}
+var _heard := {"tower": 0, "music": 0, "emergency": 0, "ranger": 0}
+var _strength := {"tower": 0.0, "music": 0.0, "emergency": 0.0, "ranger": 0.0}
 
 
 func _ready() -> void:
@@ -118,6 +132,8 @@ func _process(delta: float) -> void:
 		s *= s
 		if id == "tower" and not _is_night():
 			s *= 0.15  # just a faint hum during the day
+		if id == "ranger" and not antenna:
+			s = 0.0
 		_strength[id] = s
 		if s > best_strength:
 			best_strength = s
@@ -146,6 +162,7 @@ const JOURNAL := {
 	"tower": "91.3 at night: a woman's voice, very far away. I think she's at the tower.",
 	"music": "96.4 is a music box tape on a loop. The number from the Bells' walkie-talkie. It's oddly nice.",
 	"emergency": "104.1 still plays the emergency message. \"This is a scheduled drill.\" It wasn't.",
+	"ranger": "99.1, with the antenna up: Ranger Station, Alder Hollow. A real person, Ranger Wren, reading out where she's hidden supplies.",
 }
 
 
@@ -168,7 +185,23 @@ func _station_text(id: String, strength: float) -> String:
 			return MUSIC_LINES[mini(n, MUSIC_LINES.size() - 1)]
 		"emergency":
 			return EMERGENCY_LINES[mini(n, EMERGENCY_LINES.size() - 1)]
+		"ranger":
+			return _ranger_line()
 	return ""
+
+
+## Wren reads a hint for a cache you haven't found yet (a different one each time).
+func _ranger_line() -> String:
+	var open: Array = []
+	for c in get_tree().get_nodes_in_group("cache"):
+		if not c.found() and RANGER_HINTS.has(c.title):
+			open.append(c.title)
+	var intro := "\"...Ranger Station, Alder Hollow, for anyone still out there. I've left supplies in tins marked R. "
+	if open.is_empty():
+		return intro + "If you've found all six, come up the trail. The kettle's on. Bring the cat...\""
+	open.sort()
+	var pick: String = open[_heard["ranger"] % open.size()]
+	return intro + RANGER_HINTS[pick] + "...\""
 
 
 ## Mixes static with whichever stations are in range.
@@ -179,6 +212,7 @@ func _fill_audio(best_strength: float) -> void:
 	var tower: float = _strength["tower"]
 	var music: float = _strength["music"]
 	var emergency: float = _strength["emergency"]
+	var ranger: float = _strength["ranger"]
 	for i in _playback.get_frames_available():
 		var dt := 1.0 / RATE
 		_st += dt
@@ -186,7 +220,7 @@ func _fill_audio(best_strength: float) -> void:
 		_noise = lerpf(_noise, randf_range(-1.0, 1.0), 0.4)
 		var v := _noise * noise_level
 		# Voices: a buzzy, filtered "mumble" with syllable-like bursts.
-		if tower > 0.01 or emergency > 0.01:
+		if tower > 0.01 or emergency > 0.01 or ranger > 0.01:
 			var pitch := 150.0 + sin(time * 2.3) * 18.0
 			_phase = fmod(_phase + pitch * dt, 1.0)
 			var buzz := _phase * 2.0 - 1.0
@@ -194,6 +228,7 @@ func _fill_audio(best_strength: float) -> void:
 			var syllable := maxf(0.0, sin(time * 11.0) * sin(time * 2.7 + 1.0))
 			var voice := _voice_lp * syllable
 			v += voice * tower * 0.7
+			v += voice * ranger * 0.75
 			# Emergency: the two-tone alert, then the announcer.
 			var cycle := fmod(time, 9.0)
 			if cycle < 2.0:

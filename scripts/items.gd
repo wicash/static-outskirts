@@ -1,6 +1,9 @@
 ## Everything Sam can carry. [name, one-line description]
 extends RefCounted
 
+## Items that open new places. They get a gold toast when found.
+const KEY_ITEMS := ["crowbar", "bolt_cutters", "antenna", "walkie", "walkman", "tape"]
+
 const ITEMS := {
 	"cat_food": ["Tin of cat food", "Fish in jelly. Biscuit's favourite, according to Grace."],
 	"candle": ["Candle", "Plain white. Makes a room feel like a room."],
@@ -16,6 +19,14 @@ const ITEMS := {
 	"collar": ["Red collar", "\"BISCUIT. If found, call Grace, 6 Alder St.\""],
 	"notebook": ["Tom's notebook", "Drawings of the street, the cat, and the tower with a face."],
 	"bandages": ["Bandages", "Still sealed."],
+	"crowbar": ["Crowbar", "Opens things that were nailed shut for a reason. Probably a good reason."],
+	"bolt_cutters": ["Bolt cutters", "For padlocks and chains. Heavy, red, very satisfying."],
+	"antenna": ["Long-wire antenna", "A coil of wire from the train's guard van. Hang it from the radio and listen further."],
+	"walkie": ["Walkie-talkie", "Yellow, the Bells'. Hold R to listen for Ranger caches: faster beeps mean closer."],
+	"tomatoes": ["Tomatoes", "Small, a bit lumpy, and the best thing you've eaten in weeks."],
+	"water": ["Bottled water", "Sealed. Tastes of plastic and safety."],
+	"seeds": ["Seed packets", "Runner beans and marigolds. Something to plant, one day."],
+	"rations": ["Ranger ration pack", "Oats, dried fruit, a chocolate bar. A note: \"Eat the chocolate first.\""],
 }
 
 

@@ -55,8 +55,10 @@ func build(parent: Node, model: String, pos: Vector3, turn: float, opts := {}) -
 	var root := k.group(parent, pos, turn)
 
 	# What you aim at to interact, and what stops you walking through the car.
-	k.thing(root, Vector3(L, roof - 0.1, W), Vector3(0, (roof + 0.1) / 2.0, 0),
+	var t := k.thing(root, Vector3(L, roof - 0.1, W), Vector3(0, (roof + 0.1) / 2.0, 0),
 		opts.get("prompt", "Look inside the car"), opts.get("lines", ["Nothing useful. Just someone's car."]))
+	t.gives = opts.get("gives", [])
+	t.journal = opts.get("journal", "")
 
 	# --- Body -------------------------------------------------------------------
 	var hood := k.box(root, Vector3(m.hood, belt - BOTTOM, W), Vector3(L / 2.0 - m.hood / 2.0, (belt + BOTTOM) / 2.0, 0), paint)

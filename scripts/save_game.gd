@@ -42,13 +42,21 @@ static func save(game: Node) -> void:
 	var radio := tree.get_first_node_in_group("radio")
 	var bowl := tree.get_first_node_in_group("cat_bowl")
 	var kettle := tree.get_first_node_in_group("kettle")
+	var harvest := {}
+	for h in tree.get_nodes_in_group("harvest"):
+		harvest[key(h)] = h.picked_day
+	var tried: Array = []
+	for l in tree.get_nodes_in_group("lock"):
+		if l.tried:
+			tried.append(key(l))
 	var data := {
 		"day": game.clock.day, "hour": game.clock.hour,
 		"inventory": game.inventory, "journal": game.journal_entries,
 		"used": used, "candles": candles,
 		"geiger": game._geiger != null,
 		"cat": {"trust": game.cat.trust, "inside": game.cat.moved_in, "collar": game.cat.collar_on()},
-		"radio": {"on": radio.on, "freq": radio.freq, "heard": radio.heard_counts()},
+		"radio": {"on": radio.on, "freq": radio.freq, "heard": radio.heard_counts(), "antenna": radio.antenna},
+		"harvest": harvest, "tried": tried,
 		"bowl_day": bowl.fed_day if bowl else -1,
 		"tea_day": kettle.tea_day if kettle else -1,
 	}
@@ -78,6 +86,8 @@ static func load_into(game: Node) -> bool:
 			n.times_used = int(used[k])
 			if n.empty_prompt != "":
 				n.prompt = n.empty_prompt
+			if n.has_method("after_load"):
+				n.after_load()
 	for c in tree.get_nodes_in_group("candle_spot"):
 		if key(c) in data.candles:
 			c.light()
@@ -91,6 +101,13 @@ static func load_into(game: Node) -> bool:
 		radio.power_on()
 	radio.freq = float(data.radio.freq)
 	radio.restore_heard(data.radio.heard)
+	radio.antenna = bool(data.radio.get("antenna", false))
+	var harvest: Dictionary = data.get("harvest", {})
+	for h in tree.get_nodes_in_group("harvest"):
+		h.picked_day = int(harvest.get(key(h), -1))
+	var tried: Array = data.get("tried", [])
+	for l in tree.get_nodes_in_group("lock"):
+		l.tried = key(l) in tried
 	var bowl := tree.get_first_node_in_group("cat_bowl")
 	if bowl:
 		bowl.fed_day = int(data.bowl_day)

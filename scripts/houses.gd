@@ -11,6 +11,8 @@ const GeigerItem := preload("res://scripts/geiger_item.gd")
 const FeedBowl := preload("res://scripts/feed_bowl.gd")
 const CandleSpot := preload("res://scripts/candle_spot.gd")
 const Tea := preload("res://scripts/tea.gd")
+const LockedDoor := preload("res://scripts/locked_door.gd")
+const Collectible := preload("res://scripts/collectible.gd")
 
 const T := 0.2          # wall thickness
 const DOOR_W := 1.0
@@ -352,6 +354,22 @@ func your_house(parent: Node, pos: Vector3) -> Node3D:
 	f.rug(h, Vector3(0.9, 0, 0.4), 0, Vector2(2.4, 1.6), Kit.FABRIC_RED)
 	f.picture(h, Vector3(-1.29, 1.6, -1.8), 90, Vector2(0.5, 0.35), Color(0.5, 0.55, 0.4))
 
+	# The board for lost things you bring home (see main.gd, collected()).
+	k.box(h, Vector3(0.03, 0.62, 1.18), Vector3(-1.32, 1.65, -2.725), Color(0.62, 0.45, 0.3))
+	k.box(h, Vector3(0.04, 0.68, 1.24), Vector3(-1.335, 1.65, -2.725), Kit.WOOD_DARK)
+	k.words(h, "LOST & FOUND", Vector3(-1.29, 2.05, -2.725), Vector3(0, 90, 0), 0.004, Color(0.2, 0.15, 0.1))
+	var slot_colors := [Color(0.5, 0.6, 0.7), Color(0.75, 0.45, 0.55), Color(0.25, 0.4, 0.75), Color(0.85, 0.7, 0.3),
+		Color(0.7, 0.65, 0.5), Kit.PAPER, Color(0.6, 0.45, 0.3), Color(0.9, 0.88, 0.8), Color(0.3, 0.5, 0.75)]
+	for i in 9:
+		var slot := k.box(h, Vector3(0.02, 0.15, 0.2), Vector3(-1.3, 1.85 - (i / 3) * 0.2, -3.075 + (i % 3) * 0.35), slot_colors[i], {"rot": Vector3(k.rng.randf_range(-6, 6), 0, 0)})
+		k.ball(slot, Vector3(0.025, 0.025, 0.025), Vector3(0.015, 0.07, 0), Color(0.75, 0.15, 0.1))
+		slot.add_to_group("memory_slot")
+		slot.set_meta("i", i)
+		slot.visible = false
+	k.thing(h, Vector3(0.1, 0.6, 1.2), Vector3(-1.3, 1.65, -2.725), "Look at the board", [
+		"A corkboard for the things you find out there. Lost things, kept safe until someone comes back for them.",
+	])
+
 	# By the door: coats, boots and Biscuit's corner.
 	f.coat_rack(h, Vector3(-0.6, 0, 3.0), Kit.FABRIC_GREEN)
 	f.boots(h, Vector3(-0.05, 0, 3.1), 10)
@@ -466,8 +484,10 @@ func bell_house(parent: Node, pos: Vector3) -> Node3D:
 	f.bunk_bed(h, Vector3(-3.35, 0, -2.3), 0)
 	var walkie := k.thing(h, Vector3(0.12, 0.22, 0.1), Vector3(-3.3, 0.55, -1.6), "Pick up the walkie-talkie", [
 		"A child's yellow walkie-talkie. Taped to the back: a card with \"96.4\" written in crayon.",
-		"You turn the radio dial to 96.4 in your head. You'll try it tonight.",
+		"The other one of the pair. Ada's, probably. You leave it for her.",
 	])
+	walkie.gives = ["walkie"]
+	walkie.journal = "Took one of the Bells' walkie-talkies. 96.4 is written on the back. It still hisses when I hold the button."
 	k.box(walkie, Vector3(0.1, 0.2, 0.06), Vector3.ZERO, Color(0.9, 0.75, 0.2))
 	k.cyl(walkie, 0.008, 0.15, Vector3(0.03, 0.16, 0), Color(0.1, 0.1, 0.1), {"sides": 3})
 	f.desk(h, Vector3(-2.3, 0, -3.1), 0, Color(0.8, 0.75, 0.6))
@@ -572,17 +592,91 @@ func patel_house(parent: Node, pos: Vector3) -> Node3D:
 func boarded_house(parent: Node, pos: Vector3) -> Node3D:
 	var h := shell(parent, pos, {
 		"walls": Color(0.55, 0.32, 0.25), "pattern": Kit.Pattern.BRICK, "inside": Color(0.6, 0.55, 0.5), "roof": Color(0.22, 0.22, 0.24),
-		"door_x": 0.0, "door": "boarded", "door_color": Color(0.25, 0.25, 0.25), "number": "7", "chimney": false,
+		"door_x": 0.0, "door": "missing", "door_color": Color(0.25, 0.25, 0.25), "number": "7", "chimney": false,
 		"windows": [["front", -2.5, "boarded", null], ["front", 2.5, "boarded", null], ["left", 0.0, "boarded", null],
 			["right", 0.0, "boarded", null], ["back", 0.0, "boarded", null]],
 	})
-	k.thing(h, Vector3(1.0, 2.1, 0.4), Vector3(0, 1.05, 3.65), "Knock on the door", [
+	# The door, boarded over. Knocking gets you nowhere; a crowbar does.
+	var lock: StaticBody3D = k.thing(h, Vector3(1.0, 2.1, 0.3), Vector3(0, 1.05, 3.6), "Knock on the door", [
 		"You knock. Nothing. The boards are nailed from the inside.",
 		"You knock again. For a second you think you hear the floor creak.",
-		"Nothing. Someone has painted on the wall: NO ONE HERE.",
-	])
+		"Nothing. Someone has painted on the wall: NO ONE HERE. The boards would come off with a crowbar.",
+	], LockedDoor)
+	lock.lock_name = "The boarded door at No. 7"
+	lock.tool_hint = "Needs something to lever the boards off"
+	lock.needs = "crowbar"
+	lock.needs_line = "Still boarded. The boards would come off with a crowbar."
+	lock.open_line = "You lever the boards off one by one, wincing at every squeal of the nails. The door behind them isn't even locked."
+	lock.journal = "Got into No. 7. Someone was living in there, boarded in. They left. NO ONE HERE was for people like me."
+	var hinge := k.group(lock, Vector3(-0.46, -1.05, -0.12), 0)
+	k.box(hinge, Vector3(0.92, 2.06, 0.05), Vector3(0.46, 1.03, 0), Color(0.25, 0.25, 0.25))
+	k.ball(hinge, Vector3(0.06, 0.06, 0.05), Vector3(0.82, 1.0, 0.04), Color(0.75, 0.65, 0.35))
+	var boards: Array = []
+	for i in 3:
+		boards.append(k.box(lock, Vector3(1.3, 0.16, 0.03), Vector3(0, -0.55 + i * 0.6, 0.06), Kit.WOOD_LIGHT.darkened(0.2),
+			{"rot": Vector3(0, 0, 25.0 if i == 1 else -10.0)}))
+	lock.swing = hinge
+	lock.swing_angle = 100.0
+	lock.hide_on_open = boards
 	k.words(h, "NO ONE HERE", Vector3(2.3, 1.0, 3.62), Vector3.ZERO, 0.012, Color(0.85, 0.85, 0.82))
+
+	# Inside: someone's camp, and a wall where they tracked the radio.
+	f.rug(h, Vector3(-2.4, 0, -1.8), 0, Vector2(1.0, 2.1), Color(0.3, 0.4, 0.3))
+	k.box(h, Vector3(0.85, 0.12, 1.9), Vector3(-2.4, 0.08, -1.8), Color(0.55, 0.3, 0.2))  # sleeping bag
+	k.box(h, Vector3(0.5, 0.12, 0.3), Vector3(-2.4, 0.15, -2.55), Color(0.7, 0.68, 0.6))  # pillow
+	k.cyl(h, 0.18, 0.15, Vector3(-1.2, 0.08, -1.0), Kit.METAL, {"sides": 8})  # camping stove
+	k.cyl(h, 0.12, 0.14, Vector3(-1.2, 0.22, -1.0), Color(0.3, 0.3, 0.3), {"sides": 8})
+	for i in 6:
+		k.cyl(h, 0.045, 0.1, Vector3(-0.6 + (i % 3) * 0.11, 0.05, -1.4 + (i / 3) * 0.11), Kit.RUST if i % 2 else Kit.METAL, {"sides": 6})  # empty tins
+	f.chair(h, Vector3(0.6, 0, -2.2), 180, Kit.WOOD)
+	f.table(h, Vector3(0.6, 0, -2.9), 0, Vector2(1.6, 0.6), Kit.WOOD_DARK)
+	k.box(h, Vector3(0.4, 0.25, 0.2), Vector3(0.3, 0.9, -2.95), Kit.WOOD_DARK)  # a radio, smashed
+	k.box(h, Vector3(0.12, 0.02, 0.2), Vector3(0.9, 0.78, -2.85), Kit.PAPER)
+	var wall := k.thing(h, Vector3(3.0, 1.6, 0.2), Vector3(0.3, 1.6, -3.35), "Look at the wall", [
+		"The whole back wall is covered: maps, frequencies, times. 91.3 circled again and again. \"SHE READS AT 2AM.\"",
+		"A list of names, copied from the radio, night after night. Okafor. Bell. Ames. Patel. Near the end, underlined twice: HALE.",
+		"Pinned in the middle, a note: \"She's not reading the dead. She's reading the ones who are still out here. Go to the tower.\"",
+	])
+	wall.journal = "No. 7's wall: someone copied down the names the tower voice reads. They think she reads the living, not the dead. My name is on it."
+	for i in 14:
+		k.box(h, Vector3(k.rng.randf_range(0.25, 0.5), k.rng.randf_range(0.2, 0.4), 0.01), Vector3(-1.1 + k.rng.randf() * 2.8, 1.0 + k.rng.randf() * 1.2, -3.38 + i * 0.001),
+			Kit.PAPER.darkened(k.rng.randf() * 0.25), {"rot": Vector3(0, 0, k.rng.randf_range(-10, 10))})
+	for i in 5:
+		k.beam(h, Vector3(-1.0 + k.rng.randf() * 2.6, 1.1 + k.rng.randf(), -3.37), Vector3(-1.0 + k.rng.randf() * 2.6, 1.1 + k.rng.randf(), -3.37), 0.01, Color(0.75, 0.15, 0.1))  # red string
+	var lantern := OmniLight3D.new()
+	lantern.light_color = Color(1.0, 0.75, 0.45)
+	lantern.light_energy = 0.6
+	lantern.omni_range = 4.5
+	lantern.position = Vector3(-1.4, 0.5, -2.2)
+	h.add_child(lantern)
+	k.cyl(h, 0.08, 0.22, Vector3(-1.4, 0.11, -2.2), Color(0.85, 0.75, 0.5), {"sides": 6, "glow": 1.2})
+	var diary := _find(h, Vector3(-2.0, 0.06, -0.6), "memory", "A diary page", "Pick up the diary page", [
+		"A page torn from a diary: \"Day 40. Heard my sister's name on 91.3 tonight. Not dead - LISTED. There's a difference. I'm going.\"",
+	], [], "A diary page from No. 7: they heard their sister's name on 91.3 and went to find her. \"Not dead - LISTED.\"")
+	k.box(diary, Vector3(0.16, 0.01, 0.22), Vector3(0, 0.0, 0), Kit.PAPER, {"rot": Vector3(0, 25, 0)})
+	var cache := _find(h, Vector3(3.0, 0, -2.6), "cache", "The boarded house", "Open the Ranger cache", [
+		"A Ranger tin behind the door of No. 7. \"For whoever was living here, or whoever comes after. Tell them the trail is open. - W\"",
+		"Empty now. You leave the lid open so the next person knows.",
+	], ["rations", "tea"])
+	k.box(cache, Vector3(0.38, 0.2, 0.2), Vector3(0, 0.1, 0), Color(0.25, 0.36, 0.22))
+	k.box(cache, Vector3(0.4, 0.04, 0.22), Vector3(0, 0.21, 0), Color(0.2, 0.29, 0.18))
+	k.words(cache, "R", Vector3(0, 0.1, 0.102), Vector3.ZERO, 0.004, Color(0.9, 0.85, 0.6))
 	return h
+
+
+## A glinting find (see collectible.gd).
+func _find(parent: Node, pos: Vector3, kind: String, title: String, prompt: String, lines: Array, gives := [], journal := "") -> StaticBody3D:
+	var c: StaticBody3D = Collectible.new()
+	c.kind = kind
+	c.title = title
+	c.prompt = prompt
+	c.lines = PackedStringArray(lines)
+	c.gives = gives
+	c.journal = journal
+	c.position = pos
+	k.add_shape(c, Vector3(0.45, 0.35, 0.45), Vector3(0, 0.12, 0))
+	parent.add_child(c)
+	return c
 
 
 ## The empty lot: a wild garden with a swing set, and something buried.

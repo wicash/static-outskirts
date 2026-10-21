@@ -32,6 +32,8 @@ Built in **Godot 4.4** (MIT licensed).
 | G | Check the Geiger counter (once you've picked it up) |
 | Tab | Backpack (items, and things you can do with them) |
 | J | Sam's journal |
+| M | Map: places searched, caches and lost things found, locks you've tried |
+| R (hold) | Listen on the walkie-talkie (once you have it): faster beeps, closer cache |
 | A / D or mouse wheel | Turn the radio dial (Shift for fine tuning) |
 | Esc | Free the mouse |
 
@@ -52,7 +54,7 @@ small story inside.
   that says "drill?", a child's drawing with three suns, and a walkie-talkie
   with a frequency taped to it.
 - **No. 5:** Mr. Lindqvist's burnt-out house.
-- **No. 7:** boarded up from the inside. NO ONE HERE.
+- **No. 7:** boarded up from the inside. NO ONE HERE. A crowbar gets you in.
 - **The empty lot:** a swing set, one swing still moving, and a buried tin.
 - **The street:** cracked road, kerbs and pavements, power poles with sagging
   and snapped wires, one streetlight that still flickers, picket fences,
@@ -83,6 +85,59 @@ small story inside.
 
 ![Journal](docs/loop/journal.png)
 ![Backpack](docs/loop/backpack.png)
+
+## Mill Road
+
+Past the stop sign at the east end of Alder Street, the road carries on to the
+railway. This is where the game opens up: things to break into, things to
+collect, and a tool chain that keeps unlocking new places.
+
+- **The Savoy garage:** a forecourt with dry pumps, a shop with shelves to
+  search, a drinks fridge, an ice chest, and a back room that's locked and
+  jammed. A parcel van has crashed into the verge outside.
+- **Mill Road allotments:** raised beds, a scarecrow in a knitted scarf, five
+  padlocked sheds, and a greenhouse whose tomatoes ripen again every day.
+- **The 6:40 train:** stopped on the level crossing since the morning of the
+  strikes. A locomotive with the driver's log, three carriages to walk through,
+  and a guard van. Behind the chained crossing gate.
+- **The signal box** on the far side of the line, its signal still red, and
+  the register that says who held the train.
+
+**The tool chain:**
+
+1. The crashed van has a **crowbar**. It opens the garage back room and the
+   boards on No. 7's door.
+2. The back room has **bolt cutters**. They open the five allotment sheds and
+   the chained crossing gate to the train.
+3. The train's guard van has a **long-wire antenna**. Hang it from your radio
+   (backpack, at home) and a new station turns up on **99.1**: Ranger Wren,
+   reading out where she's hidden supplies.
+
+**Things to collect:**
+
+- **6 Ranger caches:** green tins marked R. They glint. The Bells'
+  **walkie-talkie** beeps faster the closer you get (hold R), and Wren gives a
+  hint for one you haven't found each time you tune in. All six unlock her last
+  message.
+- **9 lost things:** a postcard, gloves, a rosette, a wedding ring, a school
+  photo, a letter, a teddy bear, a diary page and a bus pass. Each one has a
+  small story and goes up on the **Lost & Found board** in your house. Four or
+  more make home feel cozier.
+- **Pickups** pop up on the right with a little chime; tools get a gold star
+  and remind you of any lock you've tried that they might open.
+- **The map (M)** keeps score: each place's searched count, caches, lost
+  things, and every lock you've tried with what it needs.
+
+![Mill Road](docs/millroad/millroad.png)
+![The Savoy](docs/millroad/garage.png)
+![The allotments](docs/millroad/allotments.png)
+![The greenhouse](docs/millroad/greenhouse.png)
+![The crossing](docs/millroad/crossing.png)
+![Inside the 6:40](docs/millroad/carriage.png)
+![The cab](docs/millroad/cab.png)
+![No. 7](docs/millroad/no7.png)
+![Lost & Found](docs/millroad/board.png)
+![The map](docs/millroad/map.png)
 
 ## Weather, comfort and saving
 
@@ -145,6 +200,7 @@ All in `scripts/aftermath.gd`. The city (and the flash) was to the south.
     walkie-talkie).
   - **104.1:** the emergency service, still looping its "this is a drill"
     message.
+  - **99.1:** Ranger Station, Alder Hollow. Only with the antenna from the train.
 
 ![Sam](docs/daynight/sam.png)
 ![Dusk](docs/daynight/dusk.png)
@@ -157,7 +213,7 @@ All in `scripts/aftermath.gd`. The city (and the flash) was to the south.
 ## How the look works
 
 - `scripts/kit.gd` holds the shared shapes and materials; `furniture.gd`,
-  `houses.gd`, `cars.gd` and `street.gd` build everything from them.
+  `houses.gd`, `cars.gd`, `street.gd`, `aftermath.gd` and `east.gd` (Mill Road) build everything from them.
 - `scripts/main.gd` renders the 3D world at half resolution and scales it up with hard pixels.
 - `shaders/ps1.gdshader` snaps vertices to a fine grid (a light PS1 wobble), warps
   textures (affine mapping), lights per vertex, and fades to fog.
@@ -172,7 +228,7 @@ things around while we find the feel. Real models can replace them later.
 ## Screenshots from the command line
 
 ```
-godot --path . -- --shot=out.png [--home | --kitchen | --bedroom | --yourhouse | --okafor | --street | --lot | --busstop | --cat | --car | --crash | --van | --road | --flash | --decon | --help | --memorial | --wires | --shelter] [--third | --face [--close]] [--dusk | --night] [--torch] [--tuning] [--journal | --backpack] [--rain | --ashfall] [--candles] [--title]
-godot --path . -- --selftest   # presses E on a few things, saves, prints what happens
+godot --path . -- --shot=out.png [--home | --kitchen | --bedroom | --yourhouse | --okafor | --street | --lot | --busstop | --cat | --car | --crash | --van | --road | --flash | --decon | --help | --memorial | --wires | --shelter | --millroad | --garage | --shop | --backroom | --allotments | --greenhouse | --sheds | --crossing | --carriage | --cab | --signalbox | --no7 | --board] [--open] [--found] [--map] [--toasts] [--third | --face [--close]] [--dusk | --night] [--torch] [--tuning] [--journal | --backpack] [--rain | --ashfall] [--candles] [--title]
+godot --path . -- --selftest   # presses E on a few things, runs the Mill Road tool chain, saves, prints what happens
 godot --path . -- --loadtest   # loads that save and prints it
 ```
