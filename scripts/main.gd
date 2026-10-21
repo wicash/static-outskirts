@@ -1,16 +1,16 @@
-## Builds the first test area: one street on the city outskirts, your house,
-## two neighbours' houses, a stray cat, and the radio.
-## Everything is placeholder blocks so it's easy to change while we find the feel.
+## Builds Alder Street: your house, the neighbours' houses, the street, the cars,
+## Biscuit the cat, and the radio. Everything is built from code-made blocks
+## (see kit.gd) so it's easy to change while we find the feel.
 extends Node
 
-const PS1 := preload("res://shaders/ps1.gdshader")
 const SCREEN := preload("res://shaders/screen.gdshader")
 const Player := preload("res://scripts/player.gd")
-const Interactable := preload("res://scripts/interactable.gd")
-const Radio := preload("res://scripts/radio.gd")
 const Cat := preload("res://scripts/cat.gd")
 const Kit := preload("res://scripts/kit.gd")
 const Cars := preload("res://scripts/cars.gd")
+const Houses := preload("res://scripts/houses.gd")
+const Street := preload("res://scripts/street.gd")
+const Survivor := preload("res://scripts/survivor.gd")
 
 ## How many screen pixels make up one game pixel. Bigger = chunkier.
 const PIXEL_SIZE := 3
@@ -18,8 +18,7 @@ const FOG := Color(0.55, 0.52, 0.47)
 
 var world: Node3D
 var player: CharacterBody3D
-var grain: NoiseTexture2D
-var _materials := {}
+var kit: Kit
 
 var _prompt: Label
 var _message: Label
@@ -31,18 +30,13 @@ func _ready() -> void:
 	_setup_input()
 	_setup_view()
 	_setup_hud()
-	_make_grain()
+	kit = Kit.new()
 	_build_environment()
-	_build_street()
-	_build_your_house(Vector3(0, 0, -12))
-	_build_neighbour_house(Vector3(-16, 0, -12))
-	_build_burnt_house(Vector3(-15, 0, 12))
-	_build_calendar_house(Vector3(16, 0, 12))
-	_build_forest_edge()
-	_build_skyline()
-	_build_ash()
-	_spawn_player(Vector3(0, 0.1, -11), PI)
-	_spawn_cat(Vector3(1.5, 0, -6.5))
+	_build_alder_street()
+	_build_cars()
+	_spawn_player(Vector3(0.6, 0.1, -10.5), PI)
+	_spawn_cat(Vector3(1.5, 0, -6.8))
+	_start_wind()
 	_maybe_take_screenshot()
 
 
@@ -129,21 +123,10 @@ func _label(parent: Node, size: int) -> Label:
 	return l
 
 
-func _make_grain() -> void:
-	grain = NoiseTexture2D.new()
-	grain.width = 64
-	grain.height = 64
-	grain.seamless = true
-	var noise := FastNoiseLite.new()
-	noise.frequency = 0.2
-	noise.fractal_octaves = 3
-	grain.noise = noise
-
-
 func _build_environment() -> void:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_COLOR
-	env.background_color = FOG
+	env.background_color = Kit.FOG
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.62, 0.6, 0.58)
 	env.ambient_light_energy = 0.55
@@ -158,135 +141,37 @@ func _build_environment() -> void:
 	world.add_child(sun)
 
 
-# --- Building blocks ---------------------------------------------------------
-
-func mat(color: Color, glow := 0.0) -> ShaderMaterial:
-	var key := "%s/%s" % [color.to_html(), glow]
-	if _materials.has(key):
-		return _materials[key]
-	var m := ShaderMaterial.new()
-	m.shader = PS1
-	m.set_shader_parameter("albedo", color)
-	m.set_shader_parameter("grain", grain)
-	m.set_shader_parameter("fog_color", FOG)
-	m.set_shader_parameter("emission", glow)
-	_materials[key] = m
-	return m
-
-
-## A coloured block. Solid ones get collision.
-func box(parent: Node, size: Vector3, pos: Vector3, color: Color, solid := true, rot_y := 0.0) -> Node3D:
-	var mesh := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = size
-	# Extra vertices on big surfaces so the per-vertex fog and lighting stay smooth.
-	bm.subdivide_width = int(size.x / 2.0)
-	bm.subdivide_height = int(size.y / 2.0)
-	bm.subdivide_depth = int(size.z / 2.0)
-	mesh.mesh = bm
-	mesh.material_override = mat(color)
-	if not solid:
-		mesh.position = pos
-		mesh.rotation.y = rot_y
-		parent.add_child(mesh)
-		return mesh
-	var body := StaticBody3D.new()
-	body.position = pos
-	body.rotation.y = rot_y
-	_add_shape(body, size)
-	body.add_child(mesh)
-	parent.add_child(body)
-	return body
-
-
-func _add_shape(body: Node, size: Vector3) -> void:
-	var shape := CollisionShape3D.new()
-	var bs := BoxShape3D.new()
-	bs.size = size
-	shape.shape = bs
-	body.add_child(shape)
-
-
-## A block you can press E on.
-func thing(parent: Node, size: Vector3, pos: Vector3, color: Color, prompt: String, lines: Array, script: Script = Interactable) -> StaticBody3D:
-	var body: StaticBody3D = script.new()
-	body.position = pos
-	body.prompt = prompt
-	body.lines = PackedStringArray(lines)
-	_add_shape(body, size)
-	var mesh := MeshInstance3D.new()
-	var bm := BoxMesh.new()
-	bm.size = size
-	mesh.mesh = bm
-	mesh.material_override = mat(color)
-	body.add_child(mesh)
-	parent.add_child(body)
-	return body
-
-
-## A simple house shell with a door in the front (local +Z) side.
-func house(pos: Vector3, facing_road: bool, walls: Color, roof: Color, w := 7.0, d := 6.0, h := 2.8, with_roof := true) -> Node3D:
-	var root := Node3D.new()
-	root.position = pos
-	root.rotation.y = 0.0 if facing_road == (pos.z < 0) else PI
-	world.add_child(root)
-	var t := 0.2
-	var door := 1.2
-	var seg := (w - door) / 2.0
-	box(root, Vector3(w, h, t), Vector3(0, h / 2, -d / 2), walls)
-	box(root, Vector3(t, h, d), Vector3(-w / 2, h / 2, 0), walls)
-	box(root, Vector3(t, h, d), Vector3(w / 2, h / 2, 0), walls)
-	box(root, Vector3(seg, h, t), Vector3(-w / 2 + seg / 2, h / 2, d / 2), walls)
-	box(root, Vector3(seg, h, t), Vector3(w / 2 - seg / 2, h / 2, d / 2), walls)
-	box(root, Vector3(door, h - 2.1, t), Vector3(0, 2.1 + (h - 2.1) / 2, d / 2), walls)
-	box(root, Vector3(w, 0.02, d), Vector3(0, 0.01, 0), walls.darkened(0.45), false)
-	# Windows (dark glass on the outside).
-	for x in [-w / 2 + seg / 2, w / 2 - seg / 2]:
-		box(root, Vector3(1.1, 0.8, 0.05), Vector3(x, 1.5, d / 2 + 0.12), Color(0.12, 0.14, 0.16), false)
-	if with_roof:
-		box(root, Vector3(w, 0.1, d), Vector3(0, h, 0), walls.darkened(0.3), false)
-		var rm := MeshInstance3D.new()
-		var prism := PrismMesh.new()
-		prism.size = Vector3(w + 0.6, 1.5, d + 0.6)
-		rm.mesh = prism
-		rm.material_override = mat(roof)
-		rm.position = Vector3(0, h + 0.75, 0)
-		root.add_child(rm)
-	return root
-
-
 # --- Places ------------------------------------------------------------------
 
-func _build_street() -> void:
-	box(world, Vector3(140, 0.2, 140), Vector3(0, -0.1, -10), Color(0.4, 0.4, 0.33))  # dead grass
-	box(world, Vector3(110, 0.02, 7), Vector3(0, 0.01, 0), Color(0.24, 0.24, 0.25), false)  # road
-	for z in [-4.2, 4.2]:
-		box(world, Vector3(110, 0.12, 1.4), Vector3(0, 0.06, z), Color(0.5, 0.49, 0.46), false)
-	for x in range(-50, 51, 6):
-		box(world, Vector3(2, 0.03, 0.15), Vector3(x, 0.02, 0), Color(0.62, 0.58, 0.4), false)
+func _build_alder_street() -> void:
+	var houses := Houses.new(kit)
+	# North side (your side of the street), west to east.
+	houses.empty_lot(world, Vector3(-16, 0, -12))
+	houses.your_house(world, Vector3(0, 0, -12))
+	houses.okafor_house(world, Vector3(16, 0, -12))
+	houses.patel_house(world, Vector3(32, 0, -12))
+	# South side.
+	houses.bell_house(world, Vector3(-30, 0, 12))
+	houses.burnt_house(world, Vector3(-15, 0, 12))
+	houses.boarded_house(world, Vector3(16, 0, 12))
 
-	# Leaning power poles with sagging lines.
-	for x in range(-35, 36, 14):
-		var pole := box(world, Vector3(0.25, 7, 0.25), Vector3(x, 3.5, -5.4), Color(0.3, 0.25, 0.2))
-		pole.rotation.z = deg_to_rad(randf_range(-6, 6))
-		box(world, Vector3(1.8, 0.15, 0.15), Vector3(x, 6.6, -5.4), Color(0.3, 0.25, 0.2), false)
-
-	_build_cars()
-
-	# Invisible walls at the edge of the test area.
-	for wall in [[Vector3(100, 10, 1), Vector3(0, 5, -48)], [Vector3(100, 10, 1), Vector3(0, 5, 28)],
-			[Vector3(1, 10, 80), Vector3(-45, 5, -10)], [Vector3(1, 10, 80), Vector3(45, 5, -10)]]:
-		var body := StaticBody3D.new()
-		body.position = wall[1]
-		_add_shape(body, wall[0])
-		world.add_child(body)
+	# Door x positions in world space (south-side houses are turned around).
+	Street.new(kit, world).build([
+		{"x": -16.0, "z": -12.0, "door": -16.0, "number": "2", "fence": false},
+		{"x": 0.0, "z": -12.0, "door": 0.6, "number": "4", "mailbox": Color(0.3, 0.42, 0.38)},
+		{"x": 16.0, "z": -12.0, "door": 16.0, "number": "6", "mailbox": Color(0.55, 0.15, 0.15)},
+		{"x": 32.0, "z": -12.0, "door": 31.5, "number": "8"},
+		{"x": -30.0, "z": 12.0, "door": -30.3, "number": "3", "mailbox": Color(0.2, 0.35, 0.55)},
+		{"x": -15.0, "z": 12.0, "door": -15.0, "number": "5", "fence_color": Color(0.2, 0.18, 0.16)},
+		{"x": 16.0, "z": 12.0, "door": 16.0, "number": "7"},
+	])
 
 
 func _build_cars() -> void:
-	var cars := Cars.new(Kit.new())
+	var cars := Cars.new(kit)
 
 	# The family estate car that never left. Packed to the roof.
-	cars.build(world, "estate", Vector3(6, 0, 1.6), 8, {
+	cars.build(world, "estate", Vector3(30, 0, -2.3), 186, {
 		"color": Color(0.33, 0.48, 0.5), "interior": Color(0.55, 0.48, 0.38), "plate": "AH 51 KR",
 		"writing": "WAIT FOR US", "dirt": 0.3, "rust": 0.2,
 		"prompt": "Look inside the car",
@@ -330,7 +215,7 @@ func _build_cars() -> void:
 	})
 
 	# The bakery van. Someone has been sleeping in the back.
-	var van := cars.build(world, "van", Vector3(26, 0, 2.3), 180, {
+	var van := cars.build(world, "van", Vector3(22, 0, 2.3), 180, {
 		"color": Color(0.78, 0.76, 0.7), "interior": Color(0.3, 0.3, 0.32), "plate": "AB 88 KRE",
 		"side_door_open": true, "rust": 0.4, "dirt": 0.4,
 		"prompt": "Look inside the van",
@@ -360,7 +245,7 @@ func _build_cars() -> void:
 		van.add_child(label)
 
 	# A little hatchback that was already old before everything happened.
-	cars.build(world, "hatchback", Vector3(-31, 0, 2.2), -5, {
+	cars.build(world, "hatchback", Vector3(-25, 0, 2.3), -5, {
 		"color": Color(0.7, 0.58, 0.25), "interior": Color(0.4, 0.33, 0.28), "plate": "LT 63 BVX",
 		"flat": true, "rust": 0.9, "dirt": 0.95,
 		"prompt": "Look at the old hatchback",
@@ -375,7 +260,7 @@ func _build_cars() -> void:
 	})
 
 	# A pickup someone tried to move a whole bedroom with.
-	cars.build(world, "pickup", Vector3(34, 0, -2.0), 175, {
+	cars.build(world, "pickup", Vector3(-38, 0, -2.3), 5, {
 		"color": Color(0.32, 0.4, 0.55), "interior": Color(0.3, 0.27, 0.24), "plate": "RV 12 TOB",
 		"rust": 0.5, "dirt": 0.5,
 		"prompt": "Look at the pickup",
@@ -392,162 +277,14 @@ func _build_cars() -> void:
 	})
 
 
-func _build_your_house(pos: Vector3) -> void:
-	var h := house(pos, true, Color(0.72, 0.64, 0.52), Color(0.42, 0.24, 0.2))
-	# Warm lamp: the one cozy light on the street.
-	var lamp := OmniLight3D.new()
-	lamp.light_color = Color(1.0, 0.7, 0.4)
-	lamp.light_energy = 1.6
-	lamp.omni_range = 7.0
-	lamp.position = Vector3(1.5, 2.2, -1)
-	h.add_child(lamp)
-	var bulb := MeshInstance3D.new()
-	bulb.mesh = SphereMesh.new()
-	bulb.scale = Vector3.ONE * 0.3
-	bulb.material_override = mat(Color(1, 0.8, 0.5), 2.0)
-	bulb.position = Vector3(1.5, 2.55, -1)
-	h.add_child(bulb)
-
-	box(h, Vector3(2.6, 0.04, 1.8), Vector3(0, 0.03, 0.5), Color(0.55, 0.22, 0.2), false)  # rug
-	thing(h, Vector3(1.4, 0.5, 2.1), Vector3(-2.5, 0.25, -1.6), Color(0.6, 0.62, 0.7), "Lie down", [
-		"Not yet. There's still some light out.",
-	])
-	box(h, Vector3(1.4, 0.75, 0.8), Vector3(2.3, 0.375, -2.4), Color(0.45, 0.32, 0.22))  # table
-	thing(h, Vector3(0.6, 0.35, 0.3), Vector3(2.3, 0.93, -2.4), Color(0.25, 0.2, 0.16), "Switch on the radio", [
-		"...kssh... this is... broadcasting on... if anyone can hear this...",
-		"...the evacuation buses never came to Alder Street. We waited by the overpass until dark...",
-		"...ninety-one days. The lights in the woods are still on. Who is keeping them on?...",
-		"...follow the tower past the treeline. Someone is still reading the names...",
-		"Only static now. The signal felt stronger when the dial pointed north, toward the trees.",
-	], Radio)
-	thing(h, Vector3(0.7, 0.12, 0.5), Vector3(2.4, 0.06, 1.8), Color(0.4, 0.45, 0.35), "Look at the old blanket", [
-		"A folded blanket by the door. Something small has been sleeping on it.",
-	])
-
-
-func _build_neighbour_house(pos: Vector3) -> void:
-	var h := house(pos, true, Color(0.55, 0.6, 0.62), Color(0.3, 0.3, 0.33))
-	box(h, Vector3(1.6, 0.75, 0.9), Vector3(1.8, 0.375, -1.8), Color(0.5, 0.42, 0.33))
-	thing(h, Vector3(0.3, 0.02, 0.22), Vector3(1.8, 0.76, -1.8), Color(0.9, 0.88, 0.8), "Read the note", [
-		"\"Gone to my sister's in the city. Back Sunday. Feed Biscuit!\"",
-		"The note is from March. The cat bowl by the door is empty.",
-	])
-	thing(h, Vector3(0.3, 0.1, 0.3), Vector3(-0.3, 0.05, 2.4), Color(0.7, 0.3, 0.3), "Look at the bowl", [
-		"A cat bowl with BISCUIT painted on it.",
-	])
-
-
-func _build_burnt_house(pos: Vector3) -> void:
-	var h := house(pos, true, Color(0.16, 0.15, 0.14), Color(0.1, 0.1, 0.1), 7.0, 6.0, 2.8, false)
-	box(h, Vector3(4, 0.15, 3), Vector3(-1, 2.2, -1), Color(0.12, 0.11, 0.1), false).rotation.z = 0.5
-	thing(h, Vector3(0.6, 0.6, 0.6), Vector3(1.2, 0.3, -1.4), Color(0.3, 0.28, 0.25), "Look at the scorched box", [
-		"Photographs, curled from the heat. The faces have all burned away except one: a dog, smiling.",
-	])
-
-
-func _build_calendar_house(pos: Vector3) -> void:
-	var h := house(pos, true, Color(0.66, 0.6, 0.48), Color(0.25, 0.3, 0.26))
-	thing(h, Vector3(0.6, 0.8, 0.05), Vector3(-1.5, 1.6, -2.88), Color(0.9, 0.9, 0.85), "Read the calendar", [
-		"The calendar is still on March. Someone circled the 14th and wrote \"drill?\" next to it.",
-	])
-	thing(h, Vector3(0.5, 0.4, 0.05), Vector3(1.4, 1.4, -2.88), Color(0.85, 0.82, 0.5), "Look at the drawing", [
-		"A child's drawing of the street. There are three suns in the sky.",
-	])
-	box(h, Vector3(1.0, 0.5, 2.0), Vector3(2.6, 0.25, 1.4), Color(0.45, 0.5, 0.6))
-
-
-func _build_forest_edge() -> void:
-	# The treeline to the north. Dead, grey, and a bit wrong.
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 7
-	for i in 140:
-		var p := Vector3(rng.randf_range(-60, 60), 0, rng.randf_range(-46, -95))
-		var tall := rng.randf_range(6, 12)
-		box(world, Vector3(0.35, tall, 0.35), p + Vector3(0, tall / 2, 0), Color(0.22, 0.2, 0.18), false)
-		var crown := MeshInstance3D.new()
-		var cone := CylinderMesh.new()
-		cone.top_radius = 0.0
-		cone.bottom_radius = rng.randf_range(1.2, 2.2)
-		cone.height = tall * 0.7
-		cone.radial_segments = 5
-		cone.rings = 1
-		crown.mesh = cone
-		crown.material_override = mat(Color(0.25, 0.3, 0.24).lerp(Color(0.35, 0.33, 0.3), rng.randf()))
-		crown.position = p + Vector3(0, tall * 0.75, 0)
-		world.add_child(crown)
-
-	# The radio tower, with a red light that is somehow still blinking.
-	var tower := box(world, Vector3(0.5, 30, 0.5), Vector3(22, 15, -92), Color(0.3, 0.3, 0.3), false)
-	var beacon := MeshInstance3D.new()
-	var sm := SphereMesh.new()
-	sm.radius = 0.6
-	sm.height = 1.2
-	beacon.mesh = sm
-	var red := StandardMaterial3D.new()
-	red.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	red.albedo_color = Color(1, 0.15, 0.1)
-	red.disable_fog = true
-	beacon.material_override = red
-	beacon.position = Vector3(0, 15.5, 0)
-	tower.add_child(beacon)
-	var blink := create_tween().set_loops()
-	blink.tween_callback(func(): beacon.visible = true)
-	blink.tween_interval(0.25)
-	blink.tween_callback(func(): beacon.visible = false)
-	blink.tween_interval(1.8)
-
-
-func _build_skyline() -> void:
-	# The city you never reach, mostly lost in the haze.
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 3
-	for i in 24:
-		var w := rng.randf_range(5, 12)
-		var tall := rng.randf_range(10, 40)
-		var b: MeshInstance3D = box(world, Vector3(w, tall, w), Vector3(-80 + i * 7 + rng.randf_range(-2, 2), tall / 2, rng.randf_range(80, 100)), Color(0.3, 0.3, 0.32), false)
-		# Let the far city show through the haze as faint shapes.
-		var far: ShaderMaterial = mat(Color(0.3, 0.3, 0.32)).duplicate()
-		far.set_shader_parameter("fog_end", 125.0)
-		b.material_override = far
-		if rng.randf() < 0.3:
-			b.rotation.z = rng.randf_range(-0.25, 0.25)  # some of them are leaning
-
-
-func _build_ash() -> void:
-	var ash := CPUParticles3D.new()
-	ash.amount = 400
-	ash.lifetime = 18.0
-	ash.preprocess = 18.0
-	ash.position = Vector3(0, 9, 0)
-	ash.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
-	ash.emission_box_extents = Vector3(45, 0.5, 4)
-	ash.direction = Vector3(1, 0, 0)
-	ash.initial_velocity_min = 0.1
-	ash.initial_velocity_max = 0.4
-	ash.gravity = Vector3(0.1, -0.5, 0)
-	var q := QuadMesh.new()
-	q.size = Vector2(0.05, 0.05)
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
-	m.albedo_color = Color(0.85, 0.83, 0.8)
-	q.material = m
-	ash.mesh = q
-	world.add_child(ash)
-
-
 func _spawn_player(pos: Vector3, yaw: float) -> void:
 	player = Player.new()
 	player.position = pos
 	player.rotation.y = yaw
 	world.add_child(player)
-	# Placeholder body for third person: coat, head, backpack.
-	var look := Node3D.new()
-	box(look, Vector3(0.5, 0.9, 0.3), Vector3(0, 1.0, 0), Color(0.35, 0.38, 0.3), false)
-	box(look, Vector3(0.45, 0.6, 0.25), Vector3(0, 0.3, 0), Color(0.2, 0.2, 0.24), false)
-	box(look, Vector3(0.3, 0.3, 0.3), Vector3(0, 1.62, 0), Color(0.8, 0.66, 0.55), false)
-	box(look, Vector3(0.4, 0.5, 0.2), Vector3(0, 1.05, 0.25), Color(0.45, 0.3, 0.2), false)
-	player.set_body(look)
+	var body: Node3D = Survivor.new()
+	body.build(kit)
+	player.set_body(body)
 	player.focus_changed.connect(func(p: String): _prompt.text = ("[E] " + p) if p != "" else "")
 	player.message.connect(_show_message)
 
@@ -558,23 +295,36 @@ func _spawn_cat(pos: Vector3) -> void:
 	cat.home = pos
 	cat.player = player
 	world.add_child(cat)
-	var fur := Color(0.85, 0.55, 0.3)
-	var pet := thing(cat, Vector3(0.25, 0.25, 0.55), Vector3(0, 0.25, 0), fur, "Pet the cat", [
-		"The cat flinches and backs away. Maybe next time.",
-		"The cat sniffs your hand, then lets you touch its ears.",
-		"The cat purrs. It seems to have decided you're alright.",
-		"The cat headbutts your knee. Its collar tag says BISCUIT.",
-		"Biscuit purrs.",
-	])
-	pet.used.connect(cat.on_petted)
-	box(cat, Vector3(0.18, 0.18, 0.18), Vector3(0, 0.42, 0.3), fur, false)
-	for x in [-0.06, 0.06]:
-		box(cat, Vector3(0.05, 0.07, 0.03), Vector3(x, 0.54, 0.3), fur.darkened(0.2), false)
-	var tail := box(cat, Vector3(0.05, 0.05, 0.35), Vector3(0, 0.38, -0.38), fur.darkened(0.2), false)
-	tail.rotation.x = 0.7
-	for x in [-0.08, 0.08]:
-		for z in [-0.18, 0.18]:
-			box(cat, Vector3(0.06, 0.14, 0.06), Vector3(x, 0.07, z), fur.darkened(0.1), false)
+	cat.build(kit)
+
+
+## Soft wind: filtered noise that swells and fades in gusts.
+var _wind: AudioStreamGeneratorPlayback
+var _wind_lp := 0.0
+var _wind_t := 0.0
+
+
+func _start_wind() -> void:
+	var gen := AudioStreamGenerator.new()
+	gen.mix_rate = 22050.0
+	gen.buffer_length = 0.3
+	var audio := AudioStreamPlayer.new()
+	audio.stream = gen
+	audio.volume_db = -20.0
+	add_child(audio)
+	audio.play()
+	_wind = audio.get_stream_playback() as AudioStreamGeneratorPlayback
+
+
+func _fill_wind() -> void:
+	if _wind == null:
+		return
+	for i in _wind.get_frames_available():
+		_wind_t += 1.0 / 22050.0
+		var gust := 0.35 + 0.35 * sin(_wind_t * 0.4) + 0.2 * sin(_wind_t * 1.3 + 1.0)
+		_wind_lp = lerpf(_wind_lp, randf_range(-1.0, 1.0), 0.03 + gust * 0.04)
+		var v := _wind_lp * gust * 2.5
+		_wind.push_frame(Vector2(v, v * 0.9))
 
 
 # --- Per-frame ---------------------------------------------------------------
@@ -586,6 +336,7 @@ func _show_message(text: String) -> void:
 
 
 func _process(delta: float) -> void:
+	_fill_wind()
 	if _message_time > 0.0:
 		_message_time -= delta
 		_message.modulate.a = clampf(_message_time, 0.0, 1.0)
@@ -611,27 +362,29 @@ func _maybe_take_screenshot() -> void:
 			path = a.trim_prefix("--shot=")
 	if path == "":
 		return
-	if "--outside" in args:
-		player.position = Vector3(-4, 0.1, 3)
-		player.rotation.y = deg_to_rad(-150)
-	if "--north" in args:
-		player.position = Vector3(3, 0.1, 6)
-		player.rotation.y = 0.0
 	var views := {
-		"--car": [Vector3(9.5, 0.1, 4.2), 0.93, 40.0],
-		"--carin": [Vector3(5.0, 0.1, 3.6), 0.0, 120.0],
-		"--carback": [Vector3(1.0, 0.1, 2.5), -1.75, 60.0],
+		"--outside": [Vector3(-4, 0.1, 3), deg_to_rad(-150), 0.0],
+		"--north": [Vector3(3, 0.1, 6), 0.0, 0.0],
+		"--home": [Vector3(-0.2, 0.1, -9.4), 0.9, 25.0],
+		"--kitchen": [Vector3(1.0, 0.1, -10.5), 0.0, 40.0],
+		"--bedroom": [Vector3(-2.2, 0.1, -10.8), 0.3, 40.0],
+		"--yourhouse": [Vector3(4, 0.1, -1), 0.35, -10.0],
+		"--okafor": [Vector3(15.0, 0.1, -9.6), 0.5, 30.0],
+		"--bells": [Vector3(-29.6, 0.1, 10.2), -1.86, 25.0],
+		"--burnt": [Vector3(-12, 0.1, 5.5), 2.6, -10.0],
+		"--street": [Vector3(-36, 0.1, 6), -1.75, -10.0],
+		"--lot": [Vector3(-12, 0.1, -6), 1.0, 0.0],
+		"--busstop": [Vector3(30, 0.1, 3), -1.9, 0.0],
+		"--car": [Vector3(26.5, 0.1, 0.5), -0.6, 40.0],
 		"--crash": [Vector3(-15.5, 0.1, -0.8), 0.83, 40.0],
-		"--van": [Vector3(23.5, 0.1, 6.0), -0.75, 40.0],
-		"--street": [Vector3(-36, 0.1, 6), -1.75, 20.0],
+		"--van": [Vector3(19.5, 0.1, 6.0), -0.75, 40.0],
+		"--cat": [Vector3(1.5, 0.1, -4.6), 0.0, 120.0],
 	}
 	for key in views:
 		if key in args:
 			player.position = views[key][0]
 			player.rotation.y = views[key][1]
 			player.look(Vector2(0, views[key][2]))
-	if "--inside" in args:
-		player.rotation.y = -0.6
 	if "--third" in args:
 		player.toggle_view()
 	for i in 30:

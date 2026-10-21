@@ -18,6 +18,8 @@ var head: Node3D
 var arm: SpringArm3D
 var camera: Camera3D
 var body: Node3D
+var _step_audio: AudioStreamPlayer
+var _step_distance := 0.0
 
 
 func _ready() -> void:
@@ -43,6 +45,11 @@ func _ready() -> void:
 	camera.far = 200.0
 	arm.add_child(camera)
 	camera.make_current()
+
+	_step_audio = AudioStreamPlayer.new()
+	_step_audio.stream = _make_step_sound()
+	_step_audio.volume_db = -14.0
+	add_child(_step_audio)
 
 
 func set_body(node: Node3D) -> void:
@@ -77,6 +84,10 @@ func _physics_process(delta: float) -> void:
 	velocity.x = move_toward(velocity.x, dir.x * speed, speed * 8.0 * delta)
 	velocity.z = move_toward(velocity.z, dir.z * speed, speed * 8.0 * delta)
 	move_and_slide()
+	var flat_speed := Vector2(velocity.x, velocity.z).length()
+	if body and body.has_method("animate"):
+		body.animate(flat_speed, delta)
+	_footsteps(flat_speed, delta)
 
 	_update_focus()
 	if Input.is_action_just_pressed("interact") and _focus:
@@ -102,3 +113,34 @@ func _update_focus() -> void:
 	if found != _focus:
 		_focus = found
 		focus_changed.emit(_focus.prompt if _focus else "")
+
+
+func _footsteps(speed: float, delta: float) -> void:
+	if not is_on_floor() or speed < 0.5:
+		_step_distance = 0.0
+		return
+	_step_distance += speed * delta
+	if _step_distance > (0.9 if speed > 4.0 else 0.7):
+		_step_distance = 0.0
+		_step_audio.pitch_scale = randf_range(0.8, 1.15)
+		_step_audio.play()
+
+
+## A short crunchy thump, generated so the project needs no sound files yet.
+func _make_step_sound() -> AudioStreamWAV:
+	var rate := 22050
+	var frames := int(rate * 0.12)
+	var data := PackedByteArray()
+	data.resize(frames * 2)
+	var lp := 0.0
+	for i in frames:
+		var t := float(i) / frames
+		lp = lerpf(lp, randf_range(-1.0, 1.0), 0.25)
+		var thump := sin(t * 90.0) * (1.0 - t) * 0.6
+		var v := (lp * 0.7 + thump) * pow(1.0 - t, 3.0)
+		data.encode_s16(i * 2, int(clampf(v, -1.0, 1.0) * 30000.0))
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = rate
+	wav.data = data
+	return wav

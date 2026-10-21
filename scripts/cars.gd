@@ -185,15 +185,8 @@ func build(parent: Node, model: String, pos: Vector3, turn: float, opts := {}) -
 	return root
 
 
-## A straight bar between two points (pillars, cracks).
 func _beam(parent: Node, a: Vector3, b: Vector3, thick: float, color: Color) -> void:
-	var d := b - a
-	var node := k.box(parent, Vector3(d.length(), thick, thick), (a + b) / 2.0, color)
-	# Point the bar's long (X) axis from a to b.
-	var x := d.normalized()
-	var up := Vector3.UP if absf(x.y) < 0.99 else Vector3.RIGHT
-	var z := x.cross(up).normalized()
-	node.basis = Basis(x, z.cross(x), z)
+	k.beam(parent, a, b, thick, color)
 
 
 func _open_door(root: Node3D, xf: float, xd: float, belt: float, roof: float, fs: float, half: float, s: float, paint: Color, seat: Color) -> void:

@@ -204,6 +204,19 @@ func _place(parent: Node, mesh: Mesh, size: Vector3, pos: Vector3, color: Color,
 	return node
 
 
+## A straight bar from a to b (beams, branches, roof slabs when thick).
+func beam(parent: Node, a: Vector3, b: Vector3, thick: float, color: Color, opts := {}) -> Node3D:
+	var d := b - a
+	var node := box(parent, Vector3(d.length(), thick, opts.get("depth", thick)), (a + b) / 2.0, color, opts)
+	var x := d.normalized()
+	var up: Vector3 = opts.get("up", Vector3.UP)
+	if absf(x.dot(up)) > 0.99:
+		up = Vector3.RIGHT
+	var z := x.cross(up).normalized()
+	node.basis = Basis(x, z.cross(x), z)
+	return node
+
+
 func add_shape(body: Node, size: Vector3, offset := Vector3.ZERO) -> void:
 	var shape := CollisionShape3D.new()
 	var bs := BoxShape3D.new()
