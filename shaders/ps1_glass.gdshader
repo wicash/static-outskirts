@@ -5,7 +5,7 @@ render_mode blend_mix, unshaded, cull_disabled, fog_disabled, depth_draw_never;
 uniform vec4 tint : source_color = vec4(0.55, 0.62, 0.66, 0.28);
 uniform float dirt = 0.35;
 uniform sampler2D grain : source_color, filter_nearest, repeat_enable;
-uniform float snap_res = 120.0;
+uniform float snap_res = 260.0;
 uniform vec3 fog_color : source_color = vec3(0.55, 0.52, 0.47);
 uniform float fog_start = 6.0;
 uniform float fog_end = 70.0;

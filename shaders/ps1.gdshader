@@ -8,10 +8,10 @@ render_mode diffuse_lambert, specular_disabled, vertex_lighting, fog_disabled, c
 
 uniform vec4 albedo : source_color = vec4(1.0);
 uniform sampler2D grain : source_color, filter_nearest, repeat_enable;
-uniform float grain_amount = 0.25;
-uniform float tex_scale = 0.5;
+uniform float grain_amount = 0.14;
+uniform float tex_scale = 1.5;
 uniform int pattern = 0;
-uniform float snap_res = 120.0;
+uniform float snap_res = 260.0;
 uniform vec3 fog_color : source_color = vec3(0.55, 0.52, 0.47);
 uniform float fog_start = 6.0;
 uniform float fog_end = 70.0;

@@ -13,7 +13,7 @@ const Street := preload("res://scripts/street.gd")
 const Survivor := preload("res://scripts/survivor.gd")
 
 ## How many screen pixels make up one game pixel. Bigger = chunkier.
-const PIXEL_SIZE := 3
+const PIXEL_SIZE := 2
 const FOG := Color(0.55, 0.52, 0.47)
 
 var world: Node3D
@@ -385,8 +385,13 @@ func _maybe_take_screenshot() -> void:
 			player.position = views[key][0]
 			player.rotation.y = views[key][1]
 			player.look(Vector2(0, views[key][2]))
-	if "--third" in args:
+	if "--third" in args or "--face" in args:
 		player.toggle_view()
+	if "--face" in args:
+		# Turn Sam around to face the camera, for character close-ups.
+		player.body.rotation.y = PI
+		player.arm.spring_length = 2.0
+		player.camera.h_offset = 0.0
 	for i in 30:
 		await get_tree().process_frame
 	get_viewport().get_texture().get_image().save_png(path)
