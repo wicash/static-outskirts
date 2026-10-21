@@ -10,6 +10,8 @@ This is the first small test scene, built in **Godot 4.4** (MIT licensed).
 ![Street](docs/street.png)
 ![Home](docs/home.png)
 
+![Packed car](docs/car-carin.png)
+
 ## Running it
 
 1. Download Godot 4.4 or newer (standard version, not .NET) from https://godotengine.org/download
@@ -31,7 +33,10 @@ This is the first small test scene, built in **Godot 4.4** (MIT licensed).
 
 - Your house with a warm lamp, a bed, and the radio (the mystery starts here).
 - A neighbour's house, a burnt house, and a house with a calendar stuck in March.
-- A packed car that never left.
+- Five detailed cars (estate, saloon, hatchback, van, pickup) with see-through
+  windows and furnished interiors: the packed family car that never left, a
+  saloon crashed into a power pole, the bakery van someone has been sleeping in,
+  a rusted hatchback on flat tyres, and a pickup loaded with a whole bedroom.
 - A shy stray cat that trusts you a little more each time you pet it.
 - The dead treeline to the north with a blinking radio tower, and the hazy city to the south.
 
@@ -48,5 +53,5 @@ things around while we find the feel. Real models can replace them later.
 ## Screenshots from the command line
 
 ```
-godot --path . -- --shot=out.png [--inside | --outside | --north] [--third]
+godot --path . -- --shot=out.png [--inside | --outside | --north | --car | --carin | --carback | --crash | --van] [--third]
 ```

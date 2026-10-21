@@ -9,6 +9,8 @@ const Player := preload("res://scripts/player.gd")
 const Interactable := preload("res://scripts/interactable.gd")
 const Radio := preload("res://scripts/radio.gd")
 const Cat := preload("res://scripts/cat.gd")
+const Kit := preload("res://scripts/kit.gd")
+const Cars := preload("res://scripts/cars.gd")
 
 ## How many screen pixels make up one game pixel. Bigger = chunkier.
 const PIXEL_SIZE := 3
@@ -269,19 +271,7 @@ func _build_street() -> void:
 		pole.rotation.z = deg_to_rad(randf_range(-6, 6))
 		box(world, Vector3(1.8, 0.15, 0.15), Vector3(x, 6.6, -5.4), Color(0.3, 0.25, 0.2), false)
 
-	# The packed car that never left.
-	var car := Node3D.new()
-	car.position = Vector3(6, 0, 1.6)
-	car.rotation.y = deg_to_rad(8)
-	world.add_child(car)
-	thing(car, Vector3(4.2, 0.9, 1.8), Vector3(0, 0.65, 0), Color(0.45, 0.5, 0.55), "Look inside the car", [
-		"The car is packed: suitcases, a birdcage, a child's raincoat. The keys are still in the ignition.",
-		"The battery is dead. Someone wrote WAIT FOR US in the dust on the back window.",
-	])
-	box(car, Vector3(2.2, 0.7, 1.6), Vector3(-0.2, 1.4, 0), Color(0.18, 0.2, 0.22), false)
-	for cx in [-1.4, 1.4]:
-		for cz in [-0.9, 0.9]:
-			box(car, Vector3(0.6, 0.6, 0.25), Vector3(cx, 0.3, cz), Color(0.08, 0.08, 0.08), false)
+	_build_cars()
 
 	# Invisible walls at the edge of the test area.
 	for wall in [[Vector3(100, 10, 1), Vector3(0, 5, -48)], [Vector3(100, 10, 1), Vector3(0, 5, 28)],
@@ -290,6 +280,116 @@ func _build_street() -> void:
 		body.position = wall[1]
 		_add_shape(body, wall[0])
 		world.add_child(body)
+
+
+func _build_cars() -> void:
+	var cars := Cars.new(Kit.new())
+
+	# The family estate car that never left. Packed to the roof.
+	cars.build(world, "estate", Vector3(6, 0, 1.6), 8, {
+		"color": Color(0.33, 0.48, 0.5), "interior": Color(0.55, 0.48, 0.38), "plate": "AH 51 KR",
+		"writing": "WAIT FOR US", "dirt": 0.3, "rust": 0.2,
+		"prompt": "Look inside the car",
+		"lines": [
+			"The car is packed to the roof: suitcases, a birdcage, a child's car seat with a yellow raincoat folded on it.",
+			"The keys are still in the ignition. The battery is dead.",
+			"A road map on the passenger seat. Someone drew the route to the coast in red pen.",
+		],
+		"cargo": [
+			["suitcase", Vector3(-1.5, 0.63, -0.4), 0.0, Color(0.25, 0.3, 0.45)],
+			["suitcase", Vector3(-1.5, 0.63, 0.35), 0.0, Color(0.5, 0.2, 0.18)],
+			["suitcase", Vector3(-1.55, 0.86, 0.0), 6.0, Color(0.3, 0.35, 0.3)],
+			["bag", Vector3(-1.3, 0.86, 0.5), 20.0, Color(0.35, 0.42, 0.28)],
+			["box", Vector3(-1.95, 0.63, 0.0), 90.0, Color.WHITE],
+			["box", Vector3(-1.95, 0.93, 0.1), 80.0, Color.WHITE],
+			["blanket", Vector3(-1.4, 1.08, -0.2), 10.0, Color(0.55, 0.22, 0.2)],
+			["child_seat", Vector3(-0.6, 0.73, 0.45), 0.0, Color(0.6, 0.25, 0.25)],
+			["raincoat", Vector3(-0.52, 0.85, 0.45), 0.0, Color.WHITE],
+			["birdcage", Vector3(-0.62, 0.73, -0.42), 0.0, Color.WHITE],
+			["teddy", Vector3(-0.6, 0.73, 0.02), 15.0, Color.WHITE],
+			["map", Vector3(0.3, 0.69, 0.4), 12.0, Color.WHITE],
+			["mug", Vector3(0.55, 0.55, 0.0), 0.0, Color(0.8, 0.8, 0.75)],
+			["photo", Vector3(1.05, 1.06, 0.3), 20.0, Color(0.4, 0.5, 0.6)],
+		],
+	})
+
+	# A saloon that hit the power pole on the night of the strikes.
+	cars.build(world, "sedan", Vector3(-19.15, 0, -3.86), 140, {
+		"color": Color(0.5, 0.18, 0.15), "interior": Color(0.25, 0.25, 0.27), "plate": "KD 07 LMN",
+		"crashed": true, "driver_door_open": true, "rust": 0.3, "dirt": 0.6,
+		"prompt": "Look at the crashed car",
+		"lines": [
+			"It hit the pole hard. The airbag is out, grey with dust. The driver's door hangs open.",
+			"A hospital parking permit on the dashboard. Whoever it was was heading to the city.",
+		],
+		"cargo": [
+			["airbag", Vector3(0.42, 0.95, -0.4), 0.0, Color.WHITE],
+			["tissues", Vector3(-1.2, 0.86, 0.3), 30.0, Color(0.4, 0.55, 0.7)],
+			["bag", Vector3(0.1, 0.68, 0.4), 50.0, Color(0.2, 0.2, 0.22)],
+		],
+	})
+
+	# The bakery van. Someone has been sleeping in the back.
+	var van := cars.build(world, "van", Vector3(26, 0, 2.3), 180, {
+		"color": Color(0.78, 0.76, 0.7), "interior": Color(0.3, 0.3, 0.32), "plate": "AB 88 KRE",
+		"side_door_open": true, "rust": 0.4, "dirt": 0.4,
+		"prompt": "Look inside the van",
+		"lines": [
+			"ALDER BAKERY. The back is full of flour sacks and boxes of jars.",
+			"Someone has been sleeping in here: a blanket, a candle stub, and a tin of peaches, unopened.",
+		],
+		"cargo": [
+			["box", Vector3(-1.8, 0.4, -0.5), 0.0, Color.WHITE],
+			["box", Vector3(-1.8, 0.7, -0.5), 10.0, Color.WHITE],
+			["box", Vector3(-1.4, 0.4, -0.55), 5.0, Color.WHITE],
+			["blanket", Vector3(-1.0, 0.4, 0.2), 80.0, Color(0.35, 0.42, 0.3)],
+			["jerrycan", Vector3(-2.2, 0.4, 0.6), 90.0, Color.WHITE],
+			["bottle", Vector3(-0.8, 0.4, -0.5), 0.0, Color.WHITE],
+		],
+	})
+	for s in [-1.0, 1.0]:
+		var label := Label3D.new()
+		label.text = "ALDER BAKERY"
+		label.pixel_size = 0.008
+		label.font_size = 32
+		label.outline_size = 0
+		label.modulate = Color(0.55, 0.3, 0.18)
+		label.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST
+		label.position = Vector3(-0.9, 1.55, s * 0.99)
+		label.rotation_degrees.y = 0.0 if s > 0 else 180.0
+		van.add_child(label)
+
+	# A little hatchback that was already old before everything happened.
+	cars.build(world, "hatchback", Vector3(-31, 0, 2.2), -5, {
+		"color": Color(0.7, 0.58, 0.25), "interior": Color(0.4, 0.33, 0.28), "plate": "LT 63 BVX",
+		"flat": true, "rust": 0.9, "dirt": 0.95,
+		"prompt": "Look at the old hatchback",
+		"lines": [
+			"Rusted through. The tyres are flat and the windows are grey with ash.",
+			"A parking ticket under the wiper, dated the day before the strikes.",
+		],
+		"cargo": [
+			["box", Vector3(-1.4, 0.63, 0.2), 30.0, Color.WHITE],
+			["bottle", Vector3(0.1, 0.68, 0.4), 0.0, Color.WHITE],
+		],
+	})
+
+	# A pickup someone tried to move a whole bedroom with.
+	cars.build(world, "pickup", Vector3(34, 0, -2.0), 175, {
+		"color": Color(0.32, 0.4, 0.55), "interior": Color(0.3, 0.27, 0.24), "plate": "RV 12 TOB",
+		"rust": 0.5, "dirt": 0.5,
+		"prompt": "Look at the pickup",
+		"lines": [
+			"Someone tried to bring a whole bedroom: a mattress, a chair, boxes of clothes.",
+			"Out of fuel. The jerrycan in the cab is empty too.",
+		],
+		"cargo": [
+			["mattress", Vector3(-1.65, 0.73, 0.0), 0.0, Color.WHITE],
+			["chair", Vector3(-1.4, 0.91, 0.25), 30.0, Color.WHITE],
+			["box", Vector3(-2.1, 0.91, -0.45), 10.0, Color.WHITE],
+			["jerrycan", Vector3(0.3, 0.68, 0.4), 0.0, Color.WHITE],
+		],
+	})
 
 
 func _build_your_house(pos: Vector3) -> void:
@@ -517,6 +617,19 @@ func _maybe_take_screenshot() -> void:
 	if "--north" in args:
 		player.position = Vector3(3, 0.1, 6)
 		player.rotation.y = 0.0
+	var views := {
+		"--car": [Vector3(9.5, 0.1, 4.2), 0.93, 40.0],
+		"--carin": [Vector3(5.0, 0.1, 3.6), 0.0, 120.0],
+		"--carback": [Vector3(1.0, 0.1, 2.5), -1.75, 60.0],
+		"--crash": [Vector3(-15.5, 0.1, -0.8), 0.83, 40.0],
+		"--van": [Vector3(23.5, 0.1, 6.0), -0.75, 40.0],
+		"--street": [Vector3(-36, 0.1, 6), -1.75, 20.0],
+	}
+	for key in views:
+		if key in args:
+			player.position = views[key][0]
+			player.rotation.y = views[key][1]
+			player.look(Vector2(0, views[key][2]))
 	if "--inside" in args:
 		player.rotation.y = -0.6
 	if "--third" in args:
