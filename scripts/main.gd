@@ -520,6 +520,8 @@ func sleep() -> void:
 	t.tween_property(_fade, "color:a", 1.0, 1.5)
 	await t.finished
 	var cozy := comfort()
+	if cat:
+		cat.back_home_for_the_night()
 	clock.sleep_until_morning()
 	weather.set_day(clock.day)
 	write_journal("Slept. Woke up on day %d. %s" % [clock.day, weather.label()])
@@ -661,9 +663,14 @@ func travel(dest: Vector3, yaw: float, line: String, hours := 1.0) -> void:
 	var t := create_tween()
 	t.tween_property(_fade, "color:a", 1.0, 1.0)
 	await t.finished
+	var cat_comes: bool = cat != null and cat.following and cat.global_position.distance_to(player.global_position) < 20.0 \
+			and absf(dest.y - player.global_position.y) < 3.0  # he doesn't do ladders
 	player.global_position = dest
 	player.rotation.y = yaw
 	player.velocity = Vector3.ZERO
+	if cat_comes:
+		cat.arrive_with(dest, Basis(Vector3.UP, yaw) * Vector3(0.6, 0, 1.2))
+		line += "  Biscuit trots out of the trees behind you."
 	clock.skip(hours)
 	await get_tree().create_timer(0.6).timeout
 	_show_message(line)
@@ -702,6 +709,11 @@ func talk_to_wren(wren: Node) -> void:
 		line = "\"There you are. Sam, isn't it? Sam Hale, 4 Alder Street.\" She laughs at your face. \"Your name's been read out on the radio every night for two months, love. Sit down. Kettle's on.\""
 		write_journal("Met Ranger Wren at the station up the trail. She knew my name before I said it.")
 		chime(true)
+	elif _biscuit_here() and not "met_biscuit" in wren.topics:
+		wren.topics.append("met_biscuit")
+		line = "Wren stops with the kettle in her hand. \"Is that... that's Biscuit! Grace's Biscuit!\" She crouches and he walks straight past her hand to sniff Moss, who opens one eye, sighs, and goes back to sleep. \"Well. That's Moss's approval. Grace is going to cry for a week.\""
+		write_journal("Brought Biscuit up to the station. Wren nearly dropped the kettle. Moss approves of him, in a sleepy sort of way.")
+		chime(true)
 	elif _ines_did("read") and not "junction" in wren.topics:
 		line = "\"I heard you. On the radio, at two. Whole station heard you.\" Wren's eyes are wet. \"Moss howled.\""
 	elif "tower" in wren.topics and not "ines_answer" in wren.topics and clock.day == wren.tower_day:
@@ -709,6 +721,11 @@ func talk_to_wren(wren: Node) -> void:
 	elif cat and cat.moved_in and not "grace" in wren.topics:
 		line = "\"No cat? Bet he's made himself at home at yours. Sensible animal.\""
 	_wren_page(wren, line)
+
+
+## Biscuit is with you, close by.
+func _biscuit_here() -> bool:
+	return cat != null and cat.following and cat.global_position.distance_to(player.global_position) < 6.0
 
 
 func _ines_did(topic: String) -> bool:
@@ -813,6 +830,10 @@ func talk_to_ines(ines: Node) -> void:
 		line = "She's reading under her breath when you come in, a finger on a list. She stops. She takes off the headphones and looks at you for a long time.\n\n\"Sam Hale. Four Alder Street.\" It's the voice from the radio, just closer. \"I've read your name sixty-one times.\" She pulls out the other chair. \"Sit. Please.\""
 		write_journal("Met Ines Varga at the tower. The voice from 91.3. She's read my name sixty-one times.")
 		chime(true)
+	elif _biscuit_here() and not "met_biscuit" in ines.topics:
+		ines.topics.append("met_biscuit")
+		line = "Biscuit walks in like he owns the hut, jumps on the desk, and sits on tonight's list. Ines laughs, a proper laugh, surprised out of her. \"Okafor, Grace. One cat, ginger.\" She scratches his chin. \"I'll read him out tonight. Alive.\""
+		write_journal("Biscuit sat on Ines's list. She laughed. She's going to read him out tonight.")
 	elif "read" in ines.topics:
 		line = "\"There she is. The newest voice on Hollow FM.\" Ines grins. \"Your mum radioed in after. I'm not telling you what she said. She can tell you herself.\""
 	_ines_page(ines, line)
@@ -1384,14 +1405,24 @@ func _selftest_mill_road() -> void:
 
 func _selftest_station() -> void:
 	print("--- Ranger Station ---")
+	# Biscuit comes too: trust him, collar him, ask him along.
+	cat.restore(3, true, true)
+	cat.global_position = Vector3(84, 0, -44)
+	player.global_position = Vector3(85, 0.1, -45.5)
+	var pet: Node = cat._pet
+	print("biscuit prompt: ", pet.prompt, " -> ", pet.interact(), " following ", cat.following)
+	await get_tree().process_frame
+	print("biscuit prompt now: ", pet.prompt)
 	var trail := _node_with_prompt("Follow the trail north")
 	trail.interact()
 	for i in 200:
 		await get_tree().process_frame
-	print("at ", player.global_position, " hour ", clock.hour)
+	print("at ", player.global_position, " hour ", clock.hour, " biscuit at ", cat.global_position)
 	var wren := get_tree().get_first_node_in_group("wren")
 	wren.interact()
 	print(_paper._body.get_parsed_text().left(120))
+	wren.interact()
+	print("second visit with biscuit: ", _paper._body.get_parsed_text().left(80))
 	for id in ["who", "lights", "voice", "list", "grace", "train", "caches"]:
 		if id in _wren_topics(wren):
 			_wren_topic(wren, id)
@@ -1412,7 +1443,38 @@ func _selftest_station() -> void:
 	_node_with_prompt("Walk back down the trail").interact()
 	for i in 200:
 		await get_tree().process_frame
-	print("back at ", player.global_position, " comfort ", comfort())
+	print("back at ", player.global_position, " comfort ", comfort(), " biscuit at ", cat.global_position)
+	clock.hour = 22.0
+	await sleep()
+	print("after sleep biscuit at ", cat.global_position, " sleeping ", cat.sleeping, " following ", cat.following, " prompt ", cat._pet.prompt)
+	player.global_position = Vector3(0.6, 0.1, -10.5)
+	clock.hour = 22.0
+	await get_tree().create_timer(9.0).timeout
+	print("night: biscuit at ", cat.global_position, " sleeping ", cat.sleeping, " prompt ", cat._pet.prompt, " -> ", cat._pet.interact().left(40))
+	clock.hour = 12.0
+	var radio := get_tree().get_first_node_in_group("radio")
+	radio.power_on()
+	radio.freq = 96.4
+	await get_tree().create_timer(9.0).timeout
+	print("music: biscuit at ", cat.global_position, " spot ", cat._spot)
+	radio.freq = 91.0
+	# Ask him along and walk out of the front door and down the street: he
+	# should come out through the door, not the wall.
+	cat._pet.interact()
+	var path := [Vector3(0.6, 0.1, -10.5), Vector3(0.6, 0.1, -9.4), Vector3(0.6, 0.1, -7.0), Vector3(3, 0.1, -3), Vector3(14, 0.1, -1.5)]
+	var through_wall := false
+	for i in path.size() - 1:
+		var a: Vector3 = path[i]
+		var b: Vector3 = path[i + 1]
+		var n := int(a.distance_to(b) / 0.05)
+		for j in n:
+			player.global_position = a.lerp(b, float(j) / n)
+			await get_tree().physics_frame
+			var c := cat.global_position
+			if absf(c.z + 8.5) < 0.3 and absf(c.x - 0.6) > 0.8 and absf(c.x) < 4.0:
+				through_wall = true
+	await get_tree().create_timer(4.0).timeout
+	print("walk out: biscuit at ", cat.global_position, " near ", cat.global_position.distance_to(player.global_position) < 3.0, " through wall ", through_wall)
 
 
 func _selftest_tower(wren: Node) -> void:
@@ -1445,7 +1507,7 @@ func _selftest_tower(wren: Node) -> void:
 	for i in 200:
 		await get_tree().process_frame
 	await get_tree().physics_frame
-	print("on platform ", player.global_position, " on floor ", player.is_on_floor())
+	print("on platform ", player.global_position, " on floor ", player.is_on_floor(), " biscuit stayed at ", cat.global_position)
 	for i in 60:
 		await get_tree().physics_frame
 	print("still on platform y ", snappedf(player.global_position.y, 0.01))
@@ -1454,6 +1516,11 @@ func _selftest_tower(wren: Node) -> void:
 	for i in 200:
 		await get_tree().process_frame
 	print("back down ", player.global_position)
+	# Walk to the hut so Biscuit catches up (he follows your footsteps).
+	player.global_position = Tower.ORIGIN + Vector3(-1.5, 0.1, -3.0)
+	for i in 400:
+		await get_tree().process_frame
+	print("biscuit caught up: ", cat.global_position.distance_to(player.global_position) < 6.0, " ", cat.global_position)
 	var ines := get_tree().get_first_node_in_group("ines")
 	ines.interact()
 	print(_paper._body.get_parsed_text().left(100))
@@ -1557,6 +1624,9 @@ func _maybe_take_screenshot() -> void:
 		"--tower": [Vector3(1.5, 0.1, -476.5), -0.08, 30.0],
 		"--hut": [Vector3(-3.2, 0.1, -496.0), 0.85, -6.0],
 		"--collar": [Vector3(19.7, 0.1, -13.4), 0.0, -40.0],
+		"--bedroom2": [Vector3(-1.9, 0.1, -11.4), 0.35, 38.0],
+		"--radiotable": [Vector3(1.0, 0.1, -10.3), -0.8, 30.0],
+		"--catfire": [Vector3(1.2, 0.1, -392.4), -0.45, 22.0],
 		"--names": [Vector3(-5.6, 0.1, -496.6), -0.05, 2.0],
 		"--platform": [Vector3(7.0, 18.1, -497.0), 0.0, -6.0],
 		"--platformsouth": [Vector3(7.0, 18.1, -499.0), PI, -10.0],
@@ -1611,6 +1681,23 @@ func _maybe_take_screenshot() -> void:
 		_refresh_lanterns()
 	if "--wren" in args:
 		talk_to_wren(get_tree().get_first_node_in_group("wren"))
+	if "--catbed" in args or "--catradio" in args or "--catstation" in args:
+		cat.restore(5, true, true)
+		var spot := "bed" if "--catbed" in args else "radio"
+		if "--catstation" in args:
+			cat.arrive_with(Vector3(2.7, 0, -395.7), Vector3.ZERO)
+			cat.set_following(false)
+			cat.rotation.y = 1.2
+		elif spot == "radio":
+			var radio := get_tree().get_first_node_in_group("radio")
+			radio.power_on()
+			radio.freq = 96.4
+		if not "--catstation" in args:
+			cat.global_position = Cat.SPOTS[spot][1]
+			cat._spot = spot
+			cat._want_spot = spot
+			cat.sleeping = spot == "bed"
+			cat.rotation.y = 2.4
 	if "--ines" in args:
 		talk_to_ines(get_tree().get_first_node_in_group("ines"))
 	if "--onair" in args:

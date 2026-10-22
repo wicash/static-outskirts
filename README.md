@@ -189,6 +189,24 @@ through the pines to the Hollow FM mast (tower.gd):
 ![Two o'clock](docs/tower/onair.png)
 ![From the platform](docs/tower/platform.png)
 
+## Biscuit
+
+Biscuit starts as a shy stray. Feed him and pet him and he moves in. Once he
+trusts you and wears Grace's red collar, pressing E on him asks him to come
+along or to stay (cat_pet.gd):
+
+- **Coming along**, he follows your footsteps, so he goes round walls and
+  through doors instead of through them. He walks the trails with you, and
+  waits at the bottom of the tower ladder because he doesn't do ladders.
+- **At home** he keeps his own routine: curled up asleep at the foot of your
+  bed at night, and up on the radio table when there's music on 96.4.
+- **People notice him.** Wren nearly drops the kettle, Moss approves in a
+  sleepy way, and Ines promises to read him out on the radio.
+
+![Biscuit asleep on the bed](docs/biscuit/bed.png)
+![Biscuit by the radio](docs/biscuit/radio.png)
+![Biscuit at the station with Moss](docs/biscuit/station.png)
+
 ## Weather, comfort and saving
 
 - **Title screen** over your kitchen: Continue (if there's a save), New game, Quit.
@@ -308,7 +326,7 @@ finish and saves; `--loadtest` loads that save and prints what came back.
 ## Screenshots from the command line
 
 ```
-godot --path . -- --shot=out.png [--home | --kitchen | --bedroom | --yourhouse | --okafor | --street | --lot | --busstop | --cat | --car | --crash | --van | --road | --flash | --decon | --help | --memorial | --wires | --shelter | --millroad | --garage | --shop | --backroom | --allotments | --greenhouse | --sheds | --crossing | --carriage | --cab | --signalbox | --no7 | --board | --station | --fire | --cabin | --trailhead | --lanterns | --towerroad | --tower | --hut | --names | --platform | --platformsouth | --forest | --yards | --backyards] [--gallery] [--wren] [--ines] [--onair] [--lit] [--open] [--found] [--map] [--toasts] [--third | --face [--close]] [--dusk | --night] [--torch] [--tuning] [--journal | --backpack] [--rain | --ashfall] [--candles] [--title]
+godot --path . -- --shot=out.png [--home | --kitchen | --bedroom | --yourhouse | --okafor | --street | --lot | --busstop | --cat | --car | --crash | --van | --road | --flash | --decon | --help | --memorial | --wires | --shelter | --millroad | --garage | --shop | --backroom | --allotments | --greenhouse | --sheds | --crossing | --carriage | --cab | --signalbox | --no7 | --board | --station | --fire | --cabin | --trailhead | --lanterns | --towerroad | --tower | --hut | --names | --bedroom2 | --radiotable | --catfire | --platform | --platformsouth | --forest | --yards | --backyards] [--gallery] [--wren] [--ines] [--onair] [--catbed | --catradio | --catstation] [--lit] [--open] [--found] [--map] [--toasts] [--third | --face [--close]] [--dusk | --night] [--torch] [--tuning] [--journal | --backpack] [--rain | --ashfall] [--candles] [--title]
 godot --path . -- --selftest   # presses E on a few things, runs the Mill Road tool chain, saves, prints what happens
 godot --path . -- --loadtest   # loads that save and prints it
 ```
