@@ -50,7 +50,6 @@ func build() -> void:
 	_trailhead()
 	_tower_road()
 	_trees()
-	_tower()
 	_ash()
 
 
@@ -87,7 +86,7 @@ func _ground() -> void:
 		var a: Vector3 = pts[i]
 		var b: Vector3 = pts[i + 1]
 		k.beam(root, a + Vector3(0, 0.025, 0), b + Vector3(0, 0.025, 0), 0.02, PATH, {"depth": 1.6, "up": Vector3.FORWARD})
-	for wall in [[Vector3(60, 10, 1), Vector3(0, 5, -27)], [Vector3(60, 10, 1), Vector3(0, 5, 26)],
+	for wall in [[Vector3(28.4, 10, 1), Vector3(-15.8, 5, -27)], [Vector3(28.4, 10, 1), Vector3(15.8, 5, -27)], [Vector3(60, 10, 1), Vector3(0, 5, 26)],
 			[Vector3(1, 10, 60), Vector3(-24, 5, 0)], [Vector3(1, 10, 60), Vector3(24, 5, 0)]]:
 		k.blocker(root, wall[0], wall[1])
 	# Ferns and grass.
@@ -348,6 +347,21 @@ func _tower_road() -> void:
 		k.box(lock, Vector3(3.0, 0.1, 0.06), Vector3(0, y - 0.65, 0), Color(0.85, 0.85, 0.8))
 	k.box(lock, Vector3(0.9, 0.5, 0.04), Vector3(0, 0.1, 0.05), Color(0.75, 0.15, 0.1))
 	k.words(lock, "NO ENTRY", Vector3(0, 0.1, 0.075), Vector3.ZERO, 0.006, Color(0.95, 0.95, 0.9))
+	# The gate swings open on its left post.
+	var leaf := k.group(lock, Vector3(-1.5, 0, 0), 0)
+	for c in lock.get_children():
+		if c != leaf and not c is CollisionShape3D:
+			c.reparent(leaf)
+	lock.swing = leaf
+	lock.swing_angle = 100.0
+	# A deer fence either side, so the gate is the only way north.
+	for s in [-1.0, 1.0]:
+		k.blocker(root, Vector3(22.5, 3, 0.4), Vector3(s * 12.75, 1.5, -16))
+		for i in 8:
+			var x: float = s * (1.6 + 3.0 * (i + 1))
+			k.box(root, Vector3(0.12, 2.1, 0.12), Vector3(x, 1.05, -16), Kit.WOOD_DARK)
+		for y in [0.4, 1.0, 1.6, 2.0]:
+			k.box(root, Vector3(22.5, 0.015, 0.015), Vector3(s * 12.75, y, -16), Color(0.55, 0.55, 0.52))
 
 
 func _trees() -> void:
@@ -367,35 +381,6 @@ func _trees() -> void:
 	trees.birch(root, Vector3(-6.0, 0, 12.5), 7.0)
 	trees.birch(root, Vector3(-7.4, 0, 14.0), 5.5)
 	trees.birch(root, Vector3(8.5, 0, 12.0), 6.5)
-
-
-func _tower() -> void:
-	# Much closer from up here.
-	var g := k.group(root, Vector3(14, 0, -90), 0)
-	var col := Color(0.32, 0.32, 0.34)
-	for s in [-1.0, 1.0]:
-		for t in [-1.0, 1.0]:
-			k.beam(g, Vector3(s * 2.5, 0, t * 2.5), Vector3(s * 0.3, 48, t * 0.3), 0.25, col, {"fog_end": 140.0})
-	for y in range(4, 48, 4):
-		var w := 2.5 - y / 48.0 * 2.2
-		k.box(g, Vector3(w * 2, 0.15, 0.15), Vector3(0, y, w), col, {"fog_end": 140.0})
-		k.box(g, Vector3(w * 2, 0.15, 0.15), Vector3(0, y, -w), col, {"fog_end": 140.0})
-	var red := StandardMaterial3D.new()
-	red.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	red.albedo_color = Color(1, 0.15, 0.1)
-	var beacon := MeshInstance3D.new()
-	var sm := SphereMesh.new()
-	sm.radius = 0.9
-	sm.height = 1.8
-	beacon.mesh = sm
-	beacon.material_override = red
-	beacon.position = Vector3(0, 48.8, 0)
-	g.add_child(beacon)
-	var blink := g.create_tween().set_loops()
-	blink.tween_callback(func(): beacon.visible = true)
-	blink.tween_interval(0.25)
-	blink.tween_callback(func(): beacon.visible = false)
-	blink.tween_interval(1.8)
 
 
 func _ash() -> void:

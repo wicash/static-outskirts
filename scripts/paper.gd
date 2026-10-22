@@ -71,6 +71,7 @@ func open(title: String, text: String, footer: String, scroll_to_end := false) -
 	for b in _buttons.get_children():
 		b.queue_free()
 	visible = true
+	_body.scroll_following = scroll_to_end
 	_body.scroll_to_line(_body.get_line_count() if scroll_to_end else 0)
 
 

@@ -164,6 +164,31 @@ an hour's walk (a fade) brings you to a clearing in the pines.
 ![Wren's cabin](docs/station/cabin.png)
 ![The lanterns behind Alder Street](docs/station/lanterns.png)
 
+## The tower (end of chapter one)
+
+Tell Wren about the tower road once her list is done, and she promises to ask
+Ines. Come back the next day and she gives you the key. The gate opens in
+the deer fence north of her clearing, and the tower road runs fifty metres
+through the pines to the Hollow FM mast (tower.gd):
+
+- **The mast**: fifty metres of faded red-and-white lattice and the red beacon
+  you've seen from your street every night. A ladder climbs to a platform at
+  eighteen metres: smoke from the junction camp to the north, the station's
+  lanterns to the south.
+- **The transmitter hut**: Ines Varga's broadcast desk, the transmitter racks,
+  her camp bed and records, and the wall of names, with a slip for you.
+- **Ines** (ines.gd): she answers who put your name on the list. Then you
+  can wait with her until two and read the names of the living, and at the
+  end, say your own. That completes chapter one, and the next chapter (the
+  canal path to the junction camp) is set up through Wren.
+
+![The tower road gate](docs/tower/towerroad.png)
+![The tower clearing](docs/tower/tower.png)
+![Ines at her desk](docs/tower/ines.png)
+![The wall of names](docs/tower/names.png)
+![Two o'clock](docs/tower/onair.png)
+![From the platform](docs/tower/platform.png)
+
 ## Weather, comfort and saving
 
 - **Title screen** over your kitchen: Continue (if there's a save), New game, Quit.
@@ -270,7 +295,7 @@ things around while we find the feel. Real models can replace them later.
 ## Screenshots from the command line
 
 ```
-godot --path . -- --shot=out.png [--home | --kitchen | --bedroom | --yourhouse | --okafor | --street | --lot | --busstop | --cat | --car | --crash | --van | --road | --flash | --decon | --help | --memorial | --wires | --shelter | --millroad | --garage | --shop | --backroom | --allotments | --greenhouse | --sheds | --crossing | --carriage | --cab | --signalbox | --no7 | --board | --station | --fire | --cabin | --trailhead | --lanterns | --forest | --yards | --backyards] [--gallery] [--wren] [--lit] [--open] [--found] [--map] [--toasts] [--third | --face [--close]] [--dusk | --night] [--torch] [--tuning] [--journal | --backpack] [--rain | --ashfall] [--candles] [--title]
+godot --path . -- --shot=out.png [--home | --kitchen | --bedroom | --yourhouse | --okafor | --street | --lot | --busstop | --cat | --car | --crash | --van | --road | --flash | --decon | --help | --memorial | --wires | --shelter | --millroad | --garage | --shop | --backroom | --allotments | --greenhouse | --sheds | --crossing | --carriage | --cab | --signalbox | --no7 | --board | --station | --fire | --cabin | --trailhead | --lanterns | --towerroad | --tower | --hut | --names | --platform | --platformsouth | --forest | --yards | --backyards] [--gallery] [--wren] [--ines] [--onair] [--lit] [--open] [--found] [--map] [--toasts] [--third | --face [--close]] [--dusk | --night] [--torch] [--tuning] [--journal | --backpack] [--rain | --ashfall] [--candles] [--title]
 godot --path . -- --selftest   # presses E on a few things, runs the Mill Road tool chain, saves, prints what happens
 godot --path . -- --loadtest   # loads that save and prints it
 ```

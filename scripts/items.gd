@@ -2,7 +2,7 @@
 extends RefCounted
 
 ## Items that open new places. They get a gold toast when found.
-const KEY_ITEMS := ["crowbar", "bolt_cutters", "antenna", "walkie", "walkman", "tape"]
+const KEY_ITEMS := ["crowbar", "bolt_cutters", "antenna", "walkie", "walkman", "tape", "tower_key"]
 
 const ITEMS := {
 	"cat_food": ["Tin of cat food", "Fish in jelly. Biscuit's favourite, according to Grace."],
@@ -26,6 +26,7 @@ const ITEMS := {
 	"tomatoes": ["Tomatoes", "Small, a bit lumpy, and the best thing you've eaten in weeks."],
 	"water": ["Bottled water", "Sealed. Tastes of plastic and safety."],
 	"seeds": ["Seed packets", "Runner beans and marigolds. Something to plant, one day."],
+	"tower_key": ["Wren's key", "A brass key on a bootlace. TOWER ROAD, in Wren's writing."],
 	"rations": ["Ranger ration pack", "Oats, dried fruit, a chocolate bar. A note: \"Eat the chocolate first.\""],
 }
 

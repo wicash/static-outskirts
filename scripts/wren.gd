@@ -7,6 +7,7 @@ extends "res://scripts/interactable.gd"
 var met := false
 var topics: Array = []    # topic ids already talked about
 var errands: Array = []   # errand ids done
+var tower_day := -1       # the day she promised to ask Ines (she has an answer the next day)
 var body: Node3D          # her figure, idly animated
 
 
@@ -54,6 +55,12 @@ const TOPICS := {
 	"tower": ["The tower road",
 		"\"Ines locked that gate herself and asked me to keep it locked. She's not ready to see anyone.\" Wren looks at the red light over the trees. \"But your name's on her list, Sam, and she's never met a name on her list. Give me a few days. I'll ask her.\"",
 		"Wren is going to ask Ines if I can come to the tower. The tower road gate stays locked until then."],
+	"ines_answer": ["Did Ines answer?",
+		"\"She did. Took her two nights to say it.\" Wren unhooks a brass key from her belt and folds your hand round it. \"'If it's really her, send her up. Tell her to come at night. I'll be on air.'\" She holds on a moment longer. \"Go gently, Sam. She hasn't had a visitor in ninety days.\"",
+		"Ines said yes. Wren gave me the key to the tower road gate. \"Come at night. I'll be on air.\""],
+	"junction": ["The way to the junction",
+		"\"Course you're going. I'd go.\" She spreads her map on her knees. \"The overpass is down, so it's the old canal path. Lock gates are chained and the towpath floods, mind.\" She taps a blue pin. \"I'll radio Grace tonight. She'll meet you halfway.\" Then, softer: \"Not tonight, though. Tonight you sleep.\"",
+		"Wren says the long way to the junction camp is the old canal path. She's radioing Grace to meet me halfway. Next: the canal."],
 }
 
 ## Wren's list: [label, item, how many, what she says, reward items].

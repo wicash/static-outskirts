@@ -17,7 +17,8 @@ var _phase := 0.0
 
 ## `look` lets other people reuse the body (see station.gd for Ranger Wren):
 ## coat, tights, boots, skin, hair, hat, scarf, iris colours; "hat_style"
-## ("beanie" or "brim"); "backpack" (bool).
+## ("beanie", "brim" or "none"); "braids", "backpack", "headphones" and
+## "glasses" (bools).
 var look := {}
 
 
@@ -78,6 +79,8 @@ func build(k: Kit, with_look := {}) -> void:
 	for s in [-1.0, 1.0]:
 		k.box(_head, Vector3(0.04, 0.18, 0.25), Vector3(s * 0.165, 0.15, 0.03), hair)  # side hair
 		k.prism(_head, Vector3(0.06, 0.24, 0.04), Vector3(s * 0.15, 0.13, -0.13), hair, {"rot": Vector3(0, 0, 180 + s * 4)})  # side locks
+		if not look.get("braids", true):
+			continue
 		# Braids hang from behind the ears and swing a little.
 		var braid := k.group(_head, Vector3(s * 0.14, 0.1, 0.06), 0)
 		for j in 3:
@@ -85,7 +88,27 @@ func build(k: Kit, with_look := {}) -> void:
 		k.box(braid, Vector3(0.07, 0.025, 0.07), Vector3(s * 0.01, -0.26, 0), hat)  # hair tie
 		k.prism(braid, Vector3(0.06, 0.07, 0.06), Vector3(s * 0.01, -0.31, 0), hair, {"rot": Vector3(0, 0, 180)})  # tuft
 		_braids.append(braid)
-	if look.get("hat_style", "beanie") == "brim":
+	if not look.get("braids", true):
+		# A short bob instead: hair down to the jaw at the back and sides.
+		k.box(_head, Vector3(0.35, 0.2, 0.12), Vector3(0, 0.1, 0.12), hair)
+		for s in [-1.0, 1.0]:
+			k.box(_head, Vector3(0.05, 0.12, 0.2), Vector3(s * 0.17, 0.04, 0.05), hair.darkened(0.08))
+	if look.get("glasses", false):
+		for s in [-1.0, 1.0]:
+			k.ring(_head, 0.035, 0.05, Vector3(s * 0.065, 0.15, -0.152), Color(0.12, 0.1, 0.1), Vector3(90, 0, 0))
+		k.box(_head, Vector3(0.04, 0.012, 0.01), Vector3(0, 0.155, -0.153), Color(0.12, 0.1, 0.1))
+	if look.get("headphones", false):
+		# Big studio headphones, pushed down round the neck.
+		k.beam(_head, Vector3(-0.17, -0.02, 0.02), Vector3(0, -0.08, 0.14), 0.025, Color(0.15, 0.15, 0.17))
+		k.beam(_head, Vector3(0.17, -0.02, 0.02), Vector3(0, -0.08, 0.14), 0.025, Color(0.15, 0.15, 0.17))
+		for s in [-1.0, 1.0]:
+			k.cyl(_head, 0.06, 0.05, Vector3(s * 0.19, -0.03, 0.0), Color(0.2, 0.2, 0.22), {"rot": Vector3(0, 0, 90), "sides": 8})
+	var hat_style: String = look.get("hat_style", "beanie")
+	if hat_style == "none":
+		# Bare head: a parting and a little extra hair on top.
+		k.box(_head, Vector3(0.345, 0.06, 0.31), Vector3(0, 0.34, 0.02), hair)
+		k.box(_head, Vector3(0.012, 0.005, 0.2), Vector3(-0.05, 0.372, 0.0), hair.darkened(0.3))
+	elif hat_style == "brim":
 		# A ranger's wide-brimmed hat with a band.
 		k.cyl(_head, 0.29, 0.025, Vector3(0, 0.31, 0.02), hat, {"sides": 10})
 		k.cyl(_head, 0.17, 0.14, Vector3(0, 0.39, 0.02), hat, {"top": 0.15, "sides": 8})
@@ -128,6 +151,8 @@ func animate(speed: float, delta: float) -> void:
 		_legs[i].rotation.x = lerp_angle(_legs[i].rotation.x, swing * s, delta * 12.0)
 		_arms[i].rotation.x = lerp_angle(_arms[i].rotation.x, -swing * s * 0.9, delta * 12.0)
 		_arms[i].rotation.z = lerp_angle(_arms[i].rotation.z, s * 0.12, delta * 6.0)
+		if _braids.size() < 2:
+			continue
 		_braids[i].rotation.x = lerp_angle(_braids[i].rotation.x, 0.25 * amount + sin(_phase * 2.0 + s) * 0.15 * amount, delta * 8.0)
 		_braids[i].rotation.z = sin(_phase + s) * 0.12 * amount
 	var t := Time.get_ticks_msec() / 1000.0

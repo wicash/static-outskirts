@@ -24,6 +24,8 @@ const East := preload("res://scripts/east.gd")
 const Walkie := preload("res://scripts/walkie.gd")
 const Station := preload("res://scripts/station.gd")
 const WrenScript := preload("res://scripts/wren.gd")
+const Tower := preload("res://scripts/tower.gd")
+const InesScript := preload("res://scripts/ines.gd")
 
 ## How many screen pixels make up one game pixel. Bigger = chunkier.
 const PIXEL_SIZE := 2
@@ -56,7 +58,7 @@ var _chime_big: AudioStreamPlayer
 var inventory := {}            # item id -> count
 var journal_entries: Array = []  # [day, text]
 var _paper: Control
-var _paper_mode := ""          # "", "journal", "backpack", "map" or "wren"
+var _paper_mode := ""          # "", "journal", "backpack", "map", "wren", "ines" or "on_air"
 var _journal_hint: Label
 
 # Tom's tape, when it's playing.
@@ -311,6 +313,7 @@ func _build_alder_street() -> void:
 	East.new(kit, world).build()
 	Station.trail_entrance(kit, world)
 	Station.new(kit, world).build()
+	Tower.new(kit, world).build()
 
 
 func _build_cars() -> void:
@@ -649,7 +652,7 @@ func add_items(ids: Array) -> String:
 # --- The trail and Ranger Wren -------------------------------------------------------
 
 ## Walks the trail: fade out, an hour passes, fade in somewhere else.
-func travel(dest: Vector3, yaw: float, line: String) -> void:
+func travel(dest: Vector3, yaw: float, line: String, hours := 1.0) -> void:
 	player.frozen = true
 	var t := create_tween()
 	t.tween_property(_fade, "color:a", 1.0, 1.0)
@@ -657,7 +660,7 @@ func travel(dest: Vector3, yaw: float, line: String) -> void:
 	player.global_position = dest
 	player.rotation.y = yaw
 	player.velocity = Vector3.ZERO
-	clock.skip(1.0)
+	clock.skip(hours)
 	await get_tree().create_timer(0.6).timeout
 	_show_message(line)
 	var t2 := create_tween()
@@ -695,9 +698,18 @@ func talk_to_wren(wren: Node) -> void:
 		line = "\"There you are. Sam, isn't it? Sam Hale, 4 Alder Street.\" She laughs at your face. \"Your name's been read out on the radio every night for two months, love. Sit down. Kettle's on.\""
 		write_journal("Met Ranger Wren at the station up the trail. She knew my name before I said it.")
 		chime(true)
+	elif _ines_did("read") and not "junction" in wren.topics:
+		line = "\"I heard you. On the radio, at two. Whole station heard you.\" Wren's eyes are wet. \"Moss howled.\""
+	elif "tower" in wren.topics and not "ines_answer" in wren.topics and clock.day == wren.tower_day:
+		line = "\"No word from Ines yet. Give her a night, love. Come back tomorrow.\""
 	elif cat and cat.moved_in and not "grace" in wren.topics:
 		line = "\"No cat? Bet he's made himself at home at yours. Sensible animal.\""
 	_wren_page(wren, line)
+
+
+func _ines_did(topic: String) -> bool:
+	var ines := get_tree().get_first_node_in_group("ines")
+	return ines != null and topic in ines.topics
 
 
 func _wren_topics(wren: Node) -> Array:
@@ -717,6 +729,10 @@ func _wren_topics(wren: Node) -> Array:
 				ok = found_count("cache") >= 1
 			"tower":
 				ok = "list" in wren.topics and wren.errands.size() == WrenScript.ERRANDS.size()
+			"ines_answer":
+				ok = "tower" in wren.topics and clock.day > wren.tower_day
+			"junction":
+				ok = _ines_did("now")
 		if ok:
 			out.append(id)
 	return out
@@ -761,6 +777,10 @@ func _wren_topic(wren: Node, id: String) -> void:
 		write_journal(t[2])
 	if id == "grace":
 		chime(true)
+	if id == "tower":
+		wren.tower_day = clock.day
+	if id == "ines_answer":
+		add_items(["tower_key"])
 	_wren_page(wren, said)
 
 
@@ -778,6 +798,93 @@ func _wren_errand(wren: Node, id: String) -> void:
 		_refresh_lanterns()
 		write_journal("Wren is lighting lanterns at the forest edge behind Alder Street, so she can see from the mast that I'm home.")
 	_wren_page(wren, e[3])
+
+
+# --- Ines, at the tower -----------------------------------------------------------------
+
+func talk_to_ines(ines: Node) -> void:
+	var line := "Ines looks up from her lists and pushes her glasses up her nose. \"Sam. Sit, sit. Kettle's just boiled.\""
+	if not ines.met:
+		ines.met = true
+		line = "She's reading under her breath when you come in, a finger on a list. She stops. She takes off the headphones and looks at you for a long time.\n\n\"Sam Hale. Four Alder Street.\" It's the voice from the radio, just closer. \"I've read your name sixty-one times.\" She pulls out the other chair. \"Sit. Please.\""
+		write_journal("Met Ines Varga at the tower. The voice from 91.3. She's read my name sixty-one times.")
+		chime(true)
+	elif "read" in ines.topics:
+		line = "\"There she is. The newest voice on Hollow FM.\" Ines grins. \"Your mum radioed in after. I'm not telling you what she said. She can tell you herself.\""
+	_ines_page(ines, line)
+
+
+func _ines_topics(ines: Node) -> Array:
+	var out: Array = []
+	for id in InesScript.TOPICS:
+		if id in ines.topics:
+			continue
+		var ok := true
+		match id:
+			"drill":
+				ok = "voice" in ines.topics
+			"hospital", "wall", "read":
+				ok = "name" in ines.topics
+			"now":
+				ok = "read" in ines.topics
+		if ok:
+			out.append(id)
+	return out
+
+
+func _ines_page(ines: Node, said: String) -> void:
+	_paper.open("Ines Varga, Hollow FM", said, "Esc to leave")
+	for id in _ines_topics(ines):
+		_paper.add_button(InesScript.TOPICS[id][0], _ines_topic.bind(ines, id))
+	_paper.add_button("Goodbye", _close_paper)
+	_paper_mode = "ines"
+	_paper_opened()
+
+
+func _ines_topic(ines: Node, id: String) -> void:
+	if id == "read":
+		_on_air(ines)
+		return
+	var t: Array = InesScript.TOPICS[id]
+	ines.topics.append(id)
+	if t[2] != "":
+		write_journal(t[2])
+	if id == "name":
+		chime(true)
+		toast("Mum is alive", GOLD)
+	_ines_page(ines, t[1])
+
+
+## The two o'clock broadcast. You wait with her until two, then she reads the
+## names, one line at a time, and at the end it's your turn.
+func _on_air(ines: Node, step := 2.4) -> void:
+	_paper.open("Hollow FM  91.3", "You wait with her until two. She makes tea. Neither of you says much.", "")
+	_paper_mode = "on_air"
+	_paper_opened()
+	await get_tree().create_timer(step).timeout
+	var until_two := fmod(26.0 - clock.hour, 24.0)
+	clock.skip(until_two)
+	var text := ""
+	for i in InesScript.BROADCAST.size():
+		var line: String = InesScript.BROADCAST[i]
+		if "%s" in line:
+			line = line % ("\"And to Grace: Biscuit is fine. He's at Sam's.\"" if cat.moved_in else "")
+		text += ("\n\n" if text != "" else "") + line
+		_paper.open("Hollow FM  91.3   2:00 a.m.", text, "", true)
+		await get_tree().create_timer(step).timeout
+	_paper.add_button("Lean into the microphone", _on_air_say.bind(ines))
+
+
+func _on_air_say(ines: Node) -> void:
+	ines.topics.append("read")
+	var said := "\"This is Sam Hale. Four Alder Street.\" Your voice sounds strange, coming back through the headphones. \"I'm alive. Mum, I heard you. I'm coming to find you.\"\n\nThe ON AIR light hums. Ines doesn't say anything. She just puts a pin in the wall, by your name.\n\nSomewhere a long way off, someone is listening."
+	write_journal("Said my own name on the radio, at two in the morning, at the tower. \"I'm alive. Mum, I heard you. I'm coming to find you.\" Ines put a pin by my name.")
+	chime(true)
+	toast("Chapter one complete:  The names of the living", GOLD)
+	_paper.open("Hollow FM  91.3", said, "Esc to leave")
+	_paper.add_button("Stay a while", _ines_page.bind(ines, "Ines turns the ON AIR light off and passes you a mug. \"Not bad. For a first broadcast.\""))
+	_paper.add_button("Goodbye", _close_paper)
+	_paper_mode = "ines"
 
 
 # --- Pickups, finds and the map ------------------------------------------------------
@@ -868,7 +975,7 @@ func _refresh_memory_board() -> void:
 		slot.visible = int(slot.get_meta("i")) < n
 
 
-const AREAS := [["alder", "Alder Street"], ["savoy", "The Savoy garage"], ["allotments", "Mill Road allotments"], ["train", "The 6:40 train"], ["station", "The Ranger Station"]]
+const AREAS := [["alder", "Alder Street"], ["savoy", "The Savoy garage"], ["allotments", "Mill Road allotments"], ["train", "The 6:40 train"], ["station", "The Ranger Station"], ["tower", "The Hollow FM tower"]]
 
 
 func _open_map() -> void:
@@ -1131,6 +1238,8 @@ func _process(delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if _title:
 		return
+	if _paper_mode == "on_air":
+		return  # the broadcast plays to the end
 	if _paper_mode != "":
 		if event.is_action_pressed("ui_cancel") or (event.is_action_pressed("journal") and _paper_mode == "journal") \
 				or (event.is_action_pressed("backpack") and _paper_mode == "backpack") \
@@ -1295,10 +1404,76 @@ func _selftest_station() -> void:
 	_close_paper()
 	print("board -> ", _node_with_prompt("Read the check-in board").interact().left(60))
 	print("gate -> ", _lock_named("The tower road gate").interact())
+	await _selftest_tower(wren)
 	_node_with_prompt("Walk back down the trail").interact()
 	for i in 200:
 		await get_tree().process_frame
 	print("back at ", player.global_position, " comfort ", comfort())
+
+
+func _selftest_tower(wren: Node) -> void:
+	print("--- The tower ---")
+	print("same day, answer available ", "ines_answer" in _wren_topics(wren))
+	clock.day += 1
+	wren.interact()
+	print("next day, answer available ", "ines_answer" in _wren_topics(wren))
+	_wren_topic(wren, "ines_answer")
+	_close_paper()
+	print("key ", has_item("tower_key"))
+	var gate := _lock_named("The tower road gate")
+	print("gate -> ", gate.interact(), " open ", gate.is_open)
+	# Walk (run) north from Wren's yard through the gate and up the road.
+	player.position = Station.ORIGIN + Vector3(0.2, 0.1, -12)
+	player.rotation.y = 0.0
+	await get_tree().physics_frame
+	Input.action_press("move_forward")
+	Input.action_press("run")
+	var z0 := player.global_position.z
+	for i in 900:
+		await get_tree().physics_frame
+		if player.global_position.z < Tower.ORIGIN.z + 12:
+			break
+	Input.action_release("move_forward")
+	Input.action_release("run")
+	print("walked from z ", z0, " to ", player.global_position, " reached tower ", player.global_position.z < Tower.ORIGIN.z + 14)
+	print("sign -> ", _node_with_prompt("Read the sign").interact().left(50))
+	_node_with_prompt("Climb the ladder").interact()
+	for i in 200:
+		await get_tree().process_frame
+	await get_tree().physics_frame
+	print("on platform ", player.global_position, " on floor ", player.is_on_floor())
+	for i in 60:
+		await get_tree().physics_frame
+	print("still on platform y ", snappedf(player.global_position.y, 0.01))
+	print("view -> ", _node_with_prompt("Look out over the valley").interact().left(60))
+	_node_with_prompt("Climb down").interact()
+	for i in 200:
+		await get_tree().process_frame
+	print("back down ", player.global_position)
+	var ines := get_tree().get_first_node_in_group("ines")
+	ines.interact()
+	print(_paper._body.get_parsed_text().left(100))
+	for id in ["voice", "drill", "name", "hospital", "wall"]:
+		print(id, " available ", id in _ines_topics(ines))
+		_ines_topic(ines, id)
+	print("read available ", "read" in _ines_topics(ines), " now available ", "now" in _ines_topics(ines))
+	var hour_before: float = clock.hour
+	await _on_air(ines, 0.05)
+	print("on air from ", snappedf(hour_before, 0.1), " to ", snappedf(clock.hour, 0.1), " mode ", _paper_mode)
+	print(_paper._body.get_parsed_text().right(120))
+	_on_air_say(ines)
+	print("now available ", "now" in _ines_topics(ines))
+	_ines_topic(ines, "now")
+	_close_paper()
+	wren.interact()
+	print("wren greets: ", _paper._body.get_parsed_text().left(70))
+	print("junction available ", "junction" in _wren_topics(wren))
+	_wren_topic(wren, "junction")
+	_close_paper()
+	_open_map()
+	var map_text: String = _paper._body.get_parsed_text()
+	print("map tower line: ", map_text.substr(map_text.find("Hollow FM"), 40))
+	_close_paper()
 
 
 func _loadtest() -> void:
@@ -1313,7 +1488,9 @@ func _loadtest() -> void:
 	_refresh_memory_board()
 	print("board slots shown ", get_tree().get_nodes_in_group("memory_slot").filter(func(n): return n.visible).size())
 	var wren := get_tree().get_first_node_in_group("wren")
-	print("wren met ", wren.met, " topics ", wren.topics.size(), " errands ", wren.errands, " lanterns ", lanterns_lit())
+	print("wren met ", wren.met, " topics ", wren.topics.size(), " errands ", wren.errands, " lanterns ", lanterns_lit(), " tower_day ", wren.tower_day)
+	var ines := get_tree().get_first_node_in_group("ines")
+	print("ines met ", ines.met, " topics ", ines.topics, " gate open ", _lock_named("The tower road gate").is_open, " key ", has_item("tower_key"))
 	get_tree().quit()
 
 
@@ -1372,6 +1549,12 @@ func _maybe_take_screenshot() -> void:
 		"--cabin": [Vector3(2.6, 0.1, -407.0), 0.95, 14.0],
 		"--trailhead": [Vector3(83.5, 0.1, -42.5), 0.25, -6.0],
 		"--lanterns": [Vector3(-3.0, 0.1, -38.0), 0.05, -14.0],
+		"--towerroad": [Vector3(-0.6, 0.1, -412.5), -0.05, 12.0],
+		"--tower": [Vector3(1.5, 0.1, -476.5), -0.08, 30.0],
+		"--hut": [Vector3(-3.2, 0.1, -496.0), 0.85, -6.0],
+		"--names": [Vector3(-5.6, 0.1, -496.6), -0.05, 2.0],
+		"--platform": [Vector3(7.0, 18.1, -497.0), 0.0, -6.0],
+		"--platformsouth": [Vector3(7.0, 18.1, -499.0), PI, -10.0],
 	}
 	for key in views:
 		if key in args:
@@ -1423,6 +1606,12 @@ func _maybe_take_screenshot() -> void:
 		_refresh_lanterns()
 	if "--wren" in args:
 		talk_to_wren(get_tree().get_first_node_in_group("wren"))
+	if "--ines" in args:
+		talk_to_ines(get_tree().get_first_node_in_group("ines"))
+	if "--onair" in args:
+		var ines := get_tree().get_first_node_in_group("ines")
+		ines.topics = ["voice", "drill", "name"]
+		_on_air(ines, 0.0)
 	if "--toasts" in args:
 		add_items(["bolt_cutters", "soup", "soup"])
 		toast("Ranger caches  3 / 6", Color(0.6, 1.0, 0.6))

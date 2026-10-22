@@ -58,6 +58,7 @@ static func save(game: Node) -> void:
 		"radio": {"on": radio.on, "freq": radio.freq, "heard": radio.heard_counts(), "antenna": radio.antenna},
 		"harvest": harvest, "tried": tried,
 		"wren": _wren_state(tree),
+		"ines": _ines_state(tree),
 		"bowl_day": bowl.fed_day if bowl else -1,
 		"tea_day": kettle.tea_day if kettle else -1,
 	}
@@ -69,7 +70,14 @@ static func _wren_state(tree: SceneTree) -> Dictionary:
 	var w := tree.get_first_node_in_group("wren")
 	if w == null:
 		return {}
-	return {"met": w.met, "topics": w.topics, "errands": w.errands}
+	return {"met": w.met, "topics": w.topics, "errands": w.errands, "tower_day": w.tower_day}
+
+
+static func _ines_state(tree: SceneTree) -> Dictionary:
+	var n := tree.get_first_node_in_group("ines")
+	if n == null:
+		return {}
+	return {"met": n.met, "topics": n.topics}
 
 
 static func load_into(game: Node) -> bool:
@@ -119,6 +127,12 @@ static func load_into(game: Node) -> bool:
 		wren.met = bool(ws.met)
 		wren.topics = Array(ws.topics)
 		wren.errands = Array(ws.errands)
+		wren.tower_day = int(ws.get("tower_day", -1))
+	var ines := tree.get_first_node_in_group("ines")
+	var ins: Dictionary = data.get("ines", {})
+	if ines and not ins.is_empty():
+		ines.met = bool(ins.met)
+		ines.topics = Array(ins.topics)
 	var tried: Array = data.get("tried", [])
 	for l in tree.get_nodes_in_group("lock"):
 		l.tried = key(l) in tried
