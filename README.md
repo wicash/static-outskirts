@@ -220,8 +220,19 @@ All of it is made in code (ambience.gd, weather.gd), like everything else:
 - **Places**: Wren's fire crackles, and the tower generator chugs.
 - **Rain**: a hiss outside, and indoors a soft drumming of drops on the roof.
 
-`-- --soundtest` checks it all starts; `-- --musictest` writes the two
+`-- --soundtest` checks it all starts (and `-- --titletest` checks Continue and the pause menu); `-- --musictest` writes the two
 pieces out as .wav files.
+
+## Pause menu and settings
+
+Esc opens the pause menu (pause_menu.gd): back to the game, settings, quit to
+the title screen, or quit. Settings are kept between sessions in
+user://settings.cfg: volume, music volume, mouse speed, invert mouse, field
+of view, pixel size (fine, crisp or chunky), the controls line, and full
+screen.
+
+![Paused](docs/menu/pause.png)
+![Settings](docs/menu/settings.png)
 
 ## Weather, comfort and saving
 
@@ -342,7 +353,7 @@ finish and saves; `--loadtest` loads that save and prints what came back.
 ## Screenshots from the command line
 
 ```
-godot --path . -- --shot=out.png [--home | --kitchen | --bedroom | --yourhouse | --okafor | --street | --lot | --busstop | --cat | --car | --crash | --van | --road | --flash | --decon | --help | --memorial | --wires | --shelter | --millroad | --garage | --shop | --backroom | --allotments | --greenhouse | --sheds | --crossing | --carriage | --cab | --signalbox | --no7 | --board | --station | --fire | --cabin | --trailhead | --lanterns | --towerroad | --tower | --hut | --names | --bedroom2 | --radiotable | --catfire | --platform | --platformsouth | --forest | --yards | --backyards] [--gallery] [--wren] [--ines] [--onair] [--catbed | --catradio | --catstation] [--lit] [--open] [--found] [--map] [--toasts] [--third | --face [--close]] [--dusk | --night] [--torch] [--tuning] [--journal | --backpack] [--rain | --ashfall] [--candles] [--title]
+godot --path . -- --shot=out.png [--home | --kitchen | --bedroom | --yourhouse | --okafor | --street | --lot | --busstop | --cat | --car | --crash | --van | --road | --flash | --decon | --help | --memorial | --wires | --shelter | --millroad | --garage | --shop | --backroom | --allotments | --greenhouse | --sheds | --crossing | --carriage | --cab | --signalbox | --no7 | --board | --station | --fire | --cabin | --trailhead | --lanterns | --towerroad | --tower | --hut | --names | --bedroom2 | --radiotable | --catfire | --platform | --platformsouth | --forest | --yards | --backyards] [--gallery] [--wren] [--ines] [--onair] [--catbed | --catradio | --catstation] [--pause | --settings] [--lit] [--open] [--found] [--map] [--toasts] [--third | --face [--close]] [--dusk | --night] [--torch] [--tuning] [--journal | --backpack] [--rain | --ashfall] [--candles] [--title]
 godot --path . -- --selftest   # presses E on a few things, runs the Mill Road tool chain, saves, prints what happens
 godot --path . -- --loadtest   # loads that save and prints it
 ```

@@ -33,6 +33,8 @@ func _ready() -> void:
 	_rng.randomize()
 	_music = AudioStreamPlayer.new()
 	_music.volume_db = -13.0
+	_music.bus = "Music"
+	_music.process_mode = Node.PROCESS_MODE_ALWAYS  # keeps playing in the pause menu
 	add_child(_music)
 	for i in 5:
 		_chirps.append(_make_chirp(i))

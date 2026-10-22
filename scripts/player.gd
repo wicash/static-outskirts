@@ -11,6 +11,8 @@ const REACH := 2.6
 const THIRD_PERSON_DISTANCE := 3.0
 
 var third_person := false
+var sensitivity := 1.0   # from the settings (pause_menu.gd)
+var invert_y := false
 ## True while sitting at the radio or asleep: no walking or interacting.
 var frozen := false
 var torch: SpotLight3D
@@ -74,8 +76,9 @@ func set_body(node: Node3D) -> void:
 
 
 func look(relative: Vector2) -> void:
-	rotation.y -= relative.x * MOUSE_SENSITIVITY
-	_pitch = clampf(_pitch - relative.y * MOUSE_SENSITIVITY, -1.4, 1.3)
+	var speed := MOUSE_SENSITIVITY * sensitivity
+	rotation.y -= relative.x * speed
+	_pitch = clampf(_pitch - relative.y * speed * (-1.0 if invert_y else 1.0), -1.4, 1.3)
 	head.rotation.x = _pitch
 
 

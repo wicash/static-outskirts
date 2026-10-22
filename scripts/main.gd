@@ -27,6 +27,7 @@ const WrenScript := preload("res://scripts/wren.gd")
 const Tower := preload("res://scripts/tower.gd")
 const InesScript := preload("res://scripts/ines.gd")
 const Ambience := preload("res://scripts/ambience.gd")
+const PauseMenu := preload("res://scripts/pause_menu.gd")
 
 ## How many screen pixels make up one game pixel. Bigger = chunkier.
 const PIXEL_SIZE := 2
@@ -55,6 +56,9 @@ var _walkie_label: Label
 var _chime_small: AudioStreamPlayer
 var _chime_big: AudioStreamPlayer
 var ambience: Node
+var _view: SubViewportContainer
+var _pause: Control
+var settings := {}
 
 # What Sam carries and what she has written down.
 var inventory := {}            # item id -> count
@@ -91,6 +95,8 @@ func _ready() -> void:
 	_build_cars()
 	_spawn_player(Vector3(0.6, 0.1, -10.5), PI)
 	_spawn_cat(Vector3(1.5, 0, -6.8))
+	_paper.get_parent().add_child(_pause)  # on top of everything else
+	apply_settings(PauseMenu.load_settings())
 	weather = Weather.new()
 	weather.clock = clock
 	weather.player = player
@@ -103,6 +109,23 @@ func _ready() -> void:
 		_selftest()
 	elif "--loadtest" in args:
 		_loadtest()
+	elif "--titletest" in args:
+		# The real start: title screen, Continue, then the pause menu.
+		_start_ambience()
+		_show_title()
+		await get_tree().process_frame
+		_title.chosen.emit("continue")
+		await get_tree().process_frame
+		print("continued: day ", clock.day, " frozen ", player.frozen, " hints ", _hint.visible, " clock running ", clock.running, " biscuit inside ", cat.moved_in)
+		_pause.open()
+		print("paused ", get_tree().paused)
+		_pause._settings_page()
+		_pause._changed("pixels", 3)
+		print("pixels now ", _view.stretch_shrink, " saved ", PauseMenu.load_settings().pixels)
+		_pause._changed("pixels", 2)
+		_pause.close()
+		print("unpaused ", not get_tree().paused)
+		get_tree().quit()
 	elif "--soundtest" in args:
 		_start_ambience()
 		clock.hour = 9.0
@@ -175,6 +198,7 @@ func _setup_view() -> void:
 	container.set_anchors_preset(Control.PRESET_FULL_RECT)
 	container.stretch = true
 	container.stretch_shrink = PIXEL_SIZE
+	_view = container
 	container.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var mat := ShaderMaterial.new()
@@ -213,7 +237,7 @@ func _setup_hud() -> void:
 	_hint = _label(hud, 14)
 	_hint.position = Vector2(20, 16)
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_hint.text = "Click to look   WASD move   Shift run   E use   V view   F torch   Tab backpack   J journal   M map   T skip hour"
+	_hint.text = "Click to look   WASD move   Shift run   E use   V view   F torch   Tab backpack   J journal   M map   T skip hour   Esc menu"
 
 	_journal_hint = _label(hud, 16)
 	_journal_hint.position = Vector2(20, 44)
@@ -257,6 +281,8 @@ func _setup_hud() -> void:
 
 	_paper = Paper.new()
 	hud.add_child(_paper)
+	_pause = PauseMenu.new()
+	_pause.settings_changed.connect(apply_settings)
 
 	_clock_label = _label(hud, 18)
 	_clock_label.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
@@ -483,6 +509,26 @@ func _spawn_cat(pos: Vector3) -> void:
 
 ## Music, birds and the sounds of places (ambience.gd). Not started for the
 ## headless tests and screenshots.
+## Settings from the pause menu: sound, mouse, view, pixels, hints.
+func apply_settings(s: Dictionary) -> void:
+	settings = s
+	AudioServer.set_bus_volume_db(0, linear_to_db(maxf(float(s.volume), 0.001)))
+	if AudioServer.get_bus_index("Music") < 0:
+		AudioServer.add_bus()
+		AudioServer.set_bus_name(AudioServer.bus_count - 1, "Music")
+		AudioServer.set_bus_send(AudioServer.bus_count - 1, "Master")
+	AudioServer.set_bus_volume_db(AudioServer.get_bus_index("Music"), linear_to_db(maxf(float(s.music), 0.001)))
+	player.sensitivity = float(s.sensitivity)
+	player.invert_y = bool(s.invert_y)
+	player.camera.fov = float(s.fov)
+	_view.stretch_shrink = int(s.pixels)
+	if _title == null:
+		_hint.visible = bool(s.hints)
+	var full := DisplayServer.WINDOW_MODE_FULLSCREEN if s.fullscreen else DisplayServer.WINDOW_MODE_WINDOWED
+	if DisplayServer.get_name() != "headless" and DisplayServer.window_get_mode() != full:
+		DisplayServer.window_set_mode(full)
+
+
 func _start_ambience() -> void:
 	ambience = Ambience.new()
 	ambience.player = player
@@ -659,7 +705,7 @@ func _on_title(choice: String) -> void:
 		clock.refresh_night_things()
 	_title.queue_free()
 	_title = null
-	_hint.visible = true
+	_hint.visible = bool(settings.get("hints", true))
 	_clock_label.visible = true
 	_comfort_label.visible = true
 	player.frozen = false
@@ -1351,8 +1397,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		_show_message("You let an hour slip by. " + clock.clock_text().split("   ")[1])
 	if event is InputEventMouseButton and event.pressed:
 		Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
-	elif event.is_action_pressed("ui_cancel"):
-		Input.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
+	elif event.is_action_pressed("ui_cancel") and not player.frozen:
+		_pause.open()
+		get_viewport().set_input_as_handled()
 	elif event is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
 		player.look(event.relative)
 
@@ -1750,6 +1797,10 @@ func _maybe_take_screenshot() -> void:
 			cat._want_spot = spot
 			cat.sleeping = spot == "bed"
 			cat.rotation.y = 2.4
+	if "--pause" in args or "--settings" in args:
+		_pause.open()
+		if "--settings" in args:
+			_pause._settings_page()
 	if "--ines" in args:
 		talk_to_ines(get_tree().get_first_node_in_group("ines"))
 	if "--onair" in args:
