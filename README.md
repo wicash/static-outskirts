@@ -35,7 +35,7 @@ Built in **Godot 4.4** (MIT licensed).
 | M | Map: places searched, caches and lost things found, locks you've tried |
 | R (hold) | Listen on the walkie-talkie (once you have it): faster beeps, closer cache |
 | A / D or mouse wheel | Turn the radio dial (Shift for fine tuning) |
-| Esc | Free the mouse |
+| Esc | Pause menu and settings |
 
 ## What's in the scene
 
