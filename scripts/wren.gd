@@ -53,7 +53,7 @@ const TOPICS := {
 		"",
 		""],
 	"tower": ["The tower road",
-		"\"Ines locked that gate herself and asked me to keep it locked. She's not ready to see anyone.\" Wren looks at the red light over the trees. \"But your name's on her list, Sam, and she's never met a name on her list. Give me a few days. I'll ask her.\"",
+		"\"Ines locked that gate herself and asked me to keep it locked. She's not ready to see anyone.\" Wren looks at the red light over the trees. \"But your name's on her list, Sam, and she's never met a name on her list. I'll ask her tonight. Come back tomorrow.\"",
 		"Wren is going to ask Ines if I can come to the tower. The tower road gate stays locked until then."],
 	"ines_answer": ["Did Ines answer?",
 		"\"She did. Took her two nights to say it.\" Wren unhooks a brass key from her belt and folds your hand round it. \"'If it's really her, send her up. Tell her to come at night. I'll be on air.'\" She holds on a moment longer. \"Go gently, Sam. She hasn't had a visitor in ninety days.\"",

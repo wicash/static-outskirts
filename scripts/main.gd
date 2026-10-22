@@ -101,6 +101,10 @@ func _ready() -> void:
 		_selftest()
 	elif "--loadtest" in args:
 		_loadtest()
+	elif "--qa" in args:
+		var qa: Node = preload("res://scripts/qa.gd").new()
+		add_child(qa)
+		qa.run()
 	elif Array(args).any(func(a): return a.begins_with("--shot=")):
 		_maybe_take_screenshot()
 	else:
@@ -1552,6 +1556,7 @@ func _maybe_take_screenshot() -> void:
 		"--towerroad": [Vector3(-0.6, 0.1, -412.5), -0.05, 12.0],
 		"--tower": [Vector3(1.5, 0.1, -476.5), -0.08, 30.0],
 		"--hut": [Vector3(-3.2, 0.1, -496.0), 0.85, -6.0],
+		"--collar": [Vector3(19.7, 0.1, -13.4), 0.0, -40.0],
 		"--names": [Vector3(-5.6, 0.1, -496.6), -0.05, 2.0],
 		"--platform": [Vector3(7.0, 18.1, -497.0), 0.0, -6.0],
 		"--platformsouth": [Vector3(7.0, 18.1, -499.0), PI, -10.0],

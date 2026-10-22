@@ -321,7 +321,7 @@ func _trailhead() -> void:
 	k.box(sign, Vector3(0.12, 2.0, 0.12), Vector3(0, 1.0, 0), Kit.WOOD)
 	k.box(sign, Vector3(1.3, 0.3, 0.05), Vector3(0.4, 1.7, 0), Kit.WOOD_LIGHT, {"rot": Vector3(0, 0, -6)})
 	k.words(sign, "ALDER HOLLOW 4 KM", Vector3(0.4, 1.7, -0.03), Vector3(0, 180, -6), 0.005, Color(0.2, 0.15, 0.1))
-	var t: StaticBody3D = k.thing(root, Vector3(3.0, 2.2, 0.8), Vector3(0, 1.1, 24.5), "Walk back down the trail", [], Trail)
+	var t: StaticBody3D = k.thing(root, Vector3(3.0, 2.2, 0.8), Vector3(0, 1.1, 25.1), "Walk back down the trail", [], Trail)
 	t.destination = TRAILHEAD
 	t.facing = PI
 	t.arrive_line = "Back down the trail to Mill Road. The lanterns behind you get smaller and then they're gone."

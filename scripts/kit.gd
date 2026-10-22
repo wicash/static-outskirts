@@ -244,6 +244,9 @@ func blocker(parent: Node, size: Vector3, pos: Vector3, turn := 0.0) -> void:
 	var body := StaticBody3D.new()
 	body.position = pos
 	body.rotation_degrees.y = turn
+	# Layer 2: Sam bumps into blockers, but her "what am I looking at" ray
+	# goes through them, so a bed's blocker doesn't hide the bed.
+	body.collision_layer = 2
 	add_shape(body, size)
 	parent.add_child(body)
 

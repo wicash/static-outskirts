@@ -458,7 +458,7 @@ func okafor_house(parent: Node, pos: Vector3) -> Node3D:
 	# Bedroom behind the partition.
 	f.bed(h, Vector3(2.75, 0, -2.3), 0, 1.4, Color(0.6, 0.45, 0.6))
 	f.nightstand(h, Vector3(3.68, 0, -3.05), 0)
-	var tag := k.thing(h, Vector3(0.12, 0.08, 0.12), Vector3(3.68, 0.54, -3.0), "Pick up the collar", [
+	var tag := k.thing(h, Vector3(0.3, 0.16, 0.3), Vector3(3.68, 0.54, -3.0), "Pick up the collar", [
 		"A red collar with a brass tag: \"BISCUIT. If found, call Grace, 6 Alder St.\"",
 		"You pocket it. It feels like a promise.",
 	])

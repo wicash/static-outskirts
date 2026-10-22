@@ -40,6 +40,12 @@ const EMERGENCY_LINES := [
 	"The same message, on a loop. Ninety-one days of \"no cause for alarm\".",
 	"\"...this is a scheduled drill...\" You turn it down a little.",
 ]
+## 91.3 once you've been on air with Ines.
+const AFTER_LINES := [
+	"\"...two hundred and sixteen tonight. Hale, Helen, Hollow Junction. Alive. Hale, Sam, Four Alder Street. Alive...\"",
+	"\"...and a message for Four Alder Street: your mum says hello, and go to bed. That's from her, not me...\"",
+	"\"...Okafor, Grace, asks after a cat called Biscuit. If you're listening, Sam: give him his ears done from her...\"",
+]
 const MUSIC_LINES := [
 	"A music box tape, playing on a loop. The kind you'd leave on for a child who can't sleep.",
 	"The music box again. It's oddly nice to have on.",
@@ -178,6 +184,9 @@ func _station_text(id: String, strength: float) -> String:
 			if strength < 0.5:
 				_heard[id] = n
 				return "91.3... just a hum under the static. Maybe it carries better after dark."
+			var game := get_tree().get_first_node_in_group("game")
+			if game and game._ines_did("read"):
+				return AFTER_LINES[n % AFTER_LINES.size()]
 			if lines.is_empty():
 				return ""
 			return lines[mini(n, lines.size() - 1)]

@@ -292,6 +292,19 @@ different:
 Everything is built from placeholder blocks in code, so it is easy to move
 things around while we find the feel. Real models can replace them later.
 
+## Quality checks
+
+`godot --headless --path . -- --qa` runs the automatic tester (scripts/qa.gd):
+
+- every object you can press E on has its own save slot and a prompt,
+- you can stand somewhere near each one and point at it,
+- pressing E on everything (with and without the key items) causes no errors,
+- little bots wander every area from its start point looking for places you
+  can fall out of the world, walk out of bounds, or get stuck.
+
+Add `--quick` to skip the wanderers. `--selftest` plays the story start to
+finish and saves; `--loadtest` loads that save and prints what came back.
+
 ## Screenshots from the command line
 
 ```

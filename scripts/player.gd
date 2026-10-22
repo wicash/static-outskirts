@@ -26,6 +26,7 @@ var _step_distance := 0.0
 
 
 func _ready() -> void:
+	collision_mask = 1 | 2  # solid things and invisible blockers (kit.gd, blocker)
 	var shape := CollisionShape3D.new()
 	var capsule := CapsuleShape3D.new()
 	capsule.radius = 0.3
@@ -129,6 +130,7 @@ func _update_focus() -> void:
 	var length := REACH + (from.distance_to(head.global_position))
 	var query := PhysicsRayQueryParameters3D.create(from, from + forward * length)
 	query.exclude = [get_rid()]
+	query.collision_mask = 1  # not blockers
 	var hit := get_world_3d().direct_space_state.intersect_ray(query)
 	var found: Node = null
 	if hit and hit.collider.has_method("interact"):
