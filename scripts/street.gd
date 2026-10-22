@@ -3,6 +3,7 @@
 extends RefCounted
 
 const Kit := preload("res://scripts/kit.gd")
+const Trees := preload("res://scripts/trees.gd")
 const Furniture := preload("res://scripts/furniture.gd")
 const Flicker := preload("res://scripts/flicker.gd")
 
@@ -11,7 +12,11 @@ var f: Furniture
 var world: Node3D
 
 
+var trees: Trees
+
+
 func _init(kit: Kit, root: Node3D) -> void:
+	trees = Trees.new(kit, 77)
 	k = kit
 	f = Furniture.new(kit)
 	world = root
@@ -283,30 +288,29 @@ func _grass(lots: Array) -> void:
 	k.scatter(world, leaf, Color(0.45, 0.32, 0.2), lx)
 
 
-func _dead_tree(pos: Vector3, tall: float, color := Color(0.3, 0.25, 0.2)) -> void:
-	# Every tree leans a little north, away from the city.
-	var lean := k.group(world, pos, 0)
-	lean.rotation_degrees.x = -k.rng.randf_range(4, 12)
-	var g := k.group(lean, Vector3.ZERO, k.rng.randf() * 360)
-	k.cyl(g, 0.16 * tall / 5.0, tall * 0.6, Vector3(0, tall * 0.3, 0), color, {"top": 0.1 * tall / 5.0, "sides": 6, "solid": true})
-	for i in 5:
-		var a := i * TAU / 5.0 + k.rng.randf()
-		var start := Vector3(0, tall * k.rng.randf_range(0.4, 0.6), 0)
-		var tip := start + Vector3(cos(a), k.rng.randf_range(0.6, 1.2), sin(a)) * tall * 0.3
-		k.beam(g, start, tip, 0.07 * tall / 5.0, color)
-		for j in 2:
-			var twig := tip + Vector3(k.rng.randf_range(-0.6, 0.6), k.rng.randf_range(0.2, 0.6), k.rng.randf_range(-0.6, 0.6))
-			k.beam(g, tip, twig, 0.035, color)
-			if k.rng.randf() < 0.4:
-				k.ball(g, Vector3(0.4, 0.3, 0.4), twig, Color(0.45, 0.35, 0.22), {"sides": 5})  # last brown leaves
+func _dead_tree(pos: Vector3, tall: float, color := Color(0.3, 0.25, 0.2), extras := false) -> void:
+	trees.dead(world, pos, tall, {"color": color, "extras": extras})
 
 
 func _yard_trees(lots: Array) -> void:
+	# Each garden gets its own kind of tree: bare ones with birdhouses and
+	# swings, a birch holding on to its yellow leaves, an old oak.
 	for lot in lots:
 		var s := -1.0 if lot.z < 0 else 1.0
-		_dead_tree(Vector3(lot.x + k.rng.randf_range(-3, 3), 0, lot.z + s * 6.5), k.rng.randf_range(4, 6))
+		var p := Vector3(lot.x + k.rng.randf_range(-3, 3), 0, lot.z + s * 6.5)
+		var roll := k.rng.randf()
+		if roll < 0.45:
+			_dead_tree(p, k.rng.randf_range(4.5, 6.5), Color(0.3, 0.25, 0.2), true)
+		elif roll < 0.7:
+			trees.birch(world, p, k.rng.randf_range(5, 7))
+		else:
+			trees.oak(world, p, k.rng.randf_range(5, 7), {"bare": 0.5})
 		if k.rng.randf() < 0.6:
-			_dead_tree(Vector3(lot.x + k.rng.randf_range(-3.5, 3.5), 0, lot.z - s * 5.2), k.rng.randf_range(3, 4.5))
+			var q := Vector3(lot.x + k.rng.randf_range(-3.5, 3.5), 0, lot.z - s * 5.2)
+			if k.rng.randf() < 0.5:
+				trees.birch(world, q, k.rng.randf_range(3.5, 5))
+			else:
+				_dead_tree(q, k.rng.randf_range(3, 4.5), Color(0.32, 0.27, 0.22), true)
 
 
 func _forest() -> void:
@@ -316,16 +320,11 @@ func _forest() -> void:
 	rng.seed = 7
 	for i in 170:
 		var p := Vector3(rng.randf_range(-62, 62), 0, rng.randf_range(-47, -100))
-		var tall := rng.randf_range(7, 14)
-		if rng.randf() < 0.15:
-			_dead_tree(p, tall * 0.6, Color(0.25, 0.22, 0.2))
+		var tall := rng.randf_range(7, 15)
+		if p.z > -56.0 and rng.randf() < 0.25:
+			trees.birch(world, p, tall * 0.6, {"solid": false})  # birches at the sunny edge
 			continue
-		k.cyl(world, 0.22, tall * 0.5, p + Vector3(0, tall * 0.25, 0), Color(0.25, 0.2, 0.16), {"sides": 5})
-		var green := Color(0.2, 0.3, 0.22).lerp(Color(0.28, 0.34, 0.26), rng.randf())
-		for tier in 3:
-			var r := (2.2 - tier * 0.55) * tall / 10.0
-			var y := tall * (0.35 + tier * 0.2)
-			k.cyl(world, r, tall * 0.35, p + Vector3(0, y + tall * 0.15, 0), green.lightened(tier * 0.05), {"top": 0.0, "sides": 6})
+		trees.pine(world, p, tall)
 	for i in 12:
 		var p := Vector3(rng.randf_range(-40, 40), 0.25, rng.randf_range(-48, -60))
 		k.beam(world, p, p + Vector3(rng.randf_range(-4, 4), 0, rng.randf_range(-1, 1)), 0.4, Color(0.28, 0.24, 0.2))  # fallen logs

@@ -235,6 +235,23 @@ All in `scripts/aftermath.gd`. The city (and the flash) was to the south.
 ![Kitchen](docs/street/kitchen.png)
 ![Your house](docs/street/yourhouse.png)
 
+## Trees
+
+`scripts/trees.gd` builds every tree as one mesh with vertex colours, so there
+can be hundreds, and they all sway a little in the wind. Every one is
+different:
+
+- **Pines:** spruces with shaggy, drooping tiers, the odd dead brown tier,
+  cones and snapped tops; Scots pines with orange bark and flat cloudy
+  crowns; dead grey snags with woodpecker holes.
+- **Gnarled bare trees** in the gardens, some with a birdhouse, a rope
+  swing, a faded ribbon or a crow's nest.
+- **Birches**, often in clumps, with black marks and yellow leaves.
+- **Autumn oaks** with rust and gold crowns over a carpet of fallen leaves.
+
+![Tree gallery](docs/trees/gallery.png)
+![The forest edge](docs/trees/forest.png)
+
 ## How the look works
 
 - `scripts/kit.gd` holds the shared shapes and materials; `furniture.gd`,
@@ -253,7 +270,7 @@ things around while we find the feel. Real models can replace them later.
 ## Screenshots from the command line
 
 ```
-godot --path . -- --shot=out.png [--home | --kitchen | --bedroom | --yourhouse | --okafor | --street | --lot | --busstop | --cat | --car | --crash | --van | --road | --flash | --decon | --help | --memorial | --wires | --shelter | --millroad | --garage | --shop | --backroom | --allotments | --greenhouse | --sheds | --crossing | --carriage | --cab | --signalbox | --no7 | --board | --station | --fire | --cabin | --trailhead | --lanterns] [--wren] [--lit] [--open] [--found] [--map] [--toasts] [--third | --face [--close]] [--dusk | --night] [--torch] [--tuning] [--journal | --backpack] [--rain | --ashfall] [--candles] [--title]
+godot --path . -- --shot=out.png [--home | --kitchen | --bedroom | --yourhouse | --okafor | --street | --lot | --busstop | --cat | --car | --crash | --van | --road | --flash | --decon | --help | --memorial | --wires | --shelter | --millroad | --garage | --shop | --backroom | --allotments | --greenhouse | --sheds | --crossing | --carriage | --cab | --signalbox | --no7 | --board | --station | --fire | --cabin | --trailhead | --lanterns | --forest | --yards | --backyards] [--gallery] [--wren] [--lit] [--open] [--found] [--map] [--toasts] [--third | --face [--close]] [--dusk | --night] [--torch] [--tuning] [--journal | --backpack] [--rain | --ashfall] [--candles] [--title]
 godot --path . -- --selftest   # presses E on a few things, runs the Mill Road tool chain, saves, prints what happens
 godot --path . -- --loadtest   # loads that save and prints it
 ```

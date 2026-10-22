@@ -1364,6 +1364,9 @@ func _maybe_take_screenshot() -> void:
 		"--signalbox": [Vector3(100.5, 0.1, -40.5), -2.6, -6.0],
 		"--no7": [Vector3(16.0, 0.1, 9.2), PI + 0.15, 8.0],
 		"--board": [Vector3(0.6, 0.1, -13.9), 1.35, -10.0],
+		"--forest": [Vector3(6, 0.1, -41), 0.35, -14.0],
+		"--yards": [Vector3(24, 0.1, -3.5), 0.9, -6.0],
+		"--backyards": [Vector3(-10, 0.1, -24), -0.6, -8.0],
 		"--station": [Vector3(0, 0.1, -379.5), 0.08, -4.0],
 		"--fire": [Vector3(2.4, 0.1, -393.6), -0.5, 12.0],
 		"--cabin": [Vector3(2.6, 0.1, -407.0), 0.95, 14.0],
@@ -1402,6 +1405,19 @@ func _maybe_take_screenshot() -> void:
 			c.times_used = 1
 			c.after_load()
 		_open_map()
+	if "--gallery" in args:
+		# Dev: one of each tree in a row, for checking how they look.
+		var tr := preload("res://scripts/trees.gd").new(kit, 5)
+		tr.dead(world, Vector3(-6, 0, -32), 6.0, {"extras": true})
+		tr.dead(world, Vector3(-2, 0, -32), 5.5, {"extras": true})
+		tr.birch(world, Vector3(2, 0, -32), 6.5)
+		tr.oak(world, Vector3(7, 0, -32), 7.0)
+		tr.pine(world, Vector3(-11, 0, -34), 11.0, {"style": "spruce"})
+		tr.pine(world, Vector3(13, 0, -34), 11.0, {"style": "scots"})
+		tr.pine(world, Vector3(17, 0, -33), 9.0, {"style": "snag"})
+		player.position = Vector3(1, 0.1, -20)
+		player.rotation.y = 0.0
+		player.look(Vector2(0, -25))
 	if "--lit" in args:
 		get_tree().get_first_node_in_group("wren").errands = ["seeds"]
 		_refresh_lanterns()

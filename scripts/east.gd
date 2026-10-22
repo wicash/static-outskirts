@@ -18,6 +18,7 @@ const Cars := preload("res://scripts/cars.gd")
 const LockedDoor := preload("res://scripts/locked_door.gd")
 const Harvest := preload("res://scripts/harvest.gd")
 const Collectible := preload("res://scripts/collectible.gd")
+const Trees := preload("res://scripts/trees.gd")
 
 const RAIL_X := 100.0
 const LIVERY := Color(0.24, 0.3, 0.42)
@@ -32,6 +33,7 @@ var k: Kit
 var world: Node3D
 var houses: Houses
 var f: Furniture
+var trees: Trees
 
 
 func _init(kit: Kit, root: Node3D) -> void:
@@ -39,6 +41,7 @@ func _init(kit: Kit, root: Node3D) -> void:
 	world = root
 	houses = Houses.new(kit)
 	f = Furniture.new(kit)
+	trees = Trees.new(kit, 202)
 
 
 func build() -> void:
@@ -912,13 +915,13 @@ func _forest_edge() -> void:
 	rng.seed = 11
 	for i in 60:
 		var p := Vector3(rng.randf_range(70, 114), 0, rng.randf_range(-48.5, -100))
-		var tall := rng.randf_range(7, 14)
-		k.cyl(world, 0.22, tall * 0.5, p + Vector3(0, tall * 0.25, 0), Color(0.25, 0.2, 0.16), {"sides": 5})
-		var green := Color(0.2, 0.3, 0.22).lerp(Color(0.28, 0.34, 0.26), rng.randf())
-		for tier in 3:
-			var r := (2.2 - tier * 0.55) * tall / 10.0
-			var y := tall * (0.35 + tier * 0.2)
-			k.cyl(world, r, tall * 0.35, p + Vector3(0, y + tall * 0.15, 0), green.lightened(tier * 0.05), {"top": 0.0, "sides": 6})
+		var tall := rng.randf_range(7, 15)
+		if absf(p.x - 85.0) < 2.5 and p.z > -62.0:
+			continue  # keep the trail clear
+		if p.z > -56.0 and rng.randf() < 0.2:
+			trees.birch(world, p, tall * 0.6, {"solid": false})
+		else:
+			trees.pine(world, p, tall)
 	# The trail head: a Ranger post with a green ribbon, and the last cache by a log.
 	var post := k.group(world, Vector3(85, 0, -45.5), 0)
 	k.box(post, Vector3(0.15, 1.3, 0.15), Vector3(0, 0.65, 0), Kit.WOOD)
@@ -931,15 +934,11 @@ func _forest_edge() -> void:
 	k.beam(world, Vector3(82.5, 0.25, -46.5), Vector3(86.5, 0.25, -46.0), 0.45, Color(0.28, 0.24, 0.2))
 	_cache(world, Vector3(84.0, 0, -45.3), "Where the trail meets the trees", "A Ranger tin by the trail post. \"Four kilometres up this trail to the station. It's still manned, more or less. I'm the more or less. - W\"", ["rations", "water"], 10)
 	# A few dead trees behind the garage.
-	for p: Vector3 in [Vector3(62, 0, -30), Vector3(78, 0, -33), Vector3(90, 0, -26), Vector3(70, 0, -38), Vector3(57, 0, -22)]:
-		var lean := k.group(world, p, 0)
-		lean.rotation_degrees.x = -k.rng.randf_range(4, 12)
-		var tall := k.rng.randf_range(4, 6)
-		k.cyl(lean, 0.16 * tall / 5.0, tall * 0.6, Vector3(0, tall * 0.3, 0), Color(0.3, 0.25, 0.2), {"top": 0.1 * tall / 5.0, "sides": 6, "solid": true})
-		for i in 4:
-			var a := i * TAU / 4.0 + k.rng.randf()
-			var start := Vector3(0, tall * 0.5, 0)
-			k.beam(lean, start, start + Vector3(cos(a), k.rng.randf_range(0.6, 1.2), sin(a)) * tall * 0.3, 0.07 * tall / 5.0, Color(0.3, 0.25, 0.2))
+	for p: Vector3 in [Vector3(62, 0, -30), Vector3(78, 0, -33), Vector3(90, 0, -26), Vector3(57, 0, -22)]:
+		trees.dead(world, p, k.rng.randf_range(4.5, 6.5), {"leaves": 0.2})
+	trees.oak(world, Vector3(70, 0, -38), 7.5, {"bare": 0.4})  # one old oak that made it
+	trees.birch(world, Vector3(92, 0, 20.5), 6.0)
+	trees.dead(world, Vector3(56.5, 0, 25), 5.0, {"extras": true})
 
 
 func _grass() -> void:

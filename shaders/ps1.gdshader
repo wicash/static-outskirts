@@ -17,6 +17,11 @@ global uniform float fog_scale;
 uniform float fog_start = 6.0;
 uniform float fog_end = 70.0;
 uniform float emission = 0.0;
+// Trees: colour comes from the mesh (vertex colours), and the crown sways.
+uniform bool vertex_tint = false;
+uniform float sway = 0.0;
+
+varying vec3 tint;
 
 varying vec3 affine_uv;
 varying float fog;
@@ -31,6 +36,15 @@ float hash(vec2 p) {
 }
 
 void vertex() {
+	tint = vertex_tint ? COLOR.rgb : vec3(1.0);
+	if (sway > 0.0) {
+		// Higher parts move more; each tree has its own phase.
+		vec3 origin = MODEL_MATRIX[3].xyz;
+		float h = max(VERTEX.y - 1.0, 0.0);
+		float t = TIME * 0.9 + origin.x * 0.37 + origin.z * 0.23;
+		VERTEX.x += sin(t) * h * h * sway * 0.004;
+		VERTEX.z += sin(t * 0.7 + 1.3) * h * h * sway * 0.003;
+	}
 	vec3 world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	vec3 n = abs(mat3(MODEL_MATRIX) * NORMAL);
 	vec2 uv = n.y > n.x && n.y > n.z ? world.xz : (n.x > n.z ? world.zy : world.xy);
@@ -50,7 +64,7 @@ void vertex() {
 void fragment() {
 	vec2 m = affine_uv.xy / affine_uv.z; // metres
 	vec3 g = texture(grain, m * tex_scale).rgb;
-	vec3 c = albedo.rgb * mix(vec3(1.0), g * 1.6, grain_amount);
+	vec3 c = albedo.rgb * tint * mix(vec3(1.0), g * 1.6, grain_amount);
 
 	float shade = 1.0;
 	if (pattern == 1) {        // horizontal wood siding

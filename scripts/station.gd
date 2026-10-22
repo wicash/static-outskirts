@@ -13,6 +13,7 @@ const Survivor := preload("res://scripts/survivor.gd")
 const Wren := preload("res://scripts/wren.gd")
 const Trail := preload("res://scripts/trail.gd")
 const LockedDoor := preload("res://scripts/locked_door.gd")
+const Trees := preload("res://scripts/trees.gd")
 
 const ORIGIN := Vector3(0, 0, -400)
 ## Where you arrive from the trail, and which way you face.
@@ -29,6 +30,7 @@ var world: Node3D
 var root: Node3D
 var houses: Houses
 var f: Furniture
+var trees: Trees
 
 
 func _init(kit: Kit, w: Node3D) -> void:
@@ -36,6 +38,7 @@ func _init(kit: Kit, w: Node3D) -> void:
 	world = w
 	houses = Houses.new(kit)
 	f = Furniture.new(kit)
+	trees = Trees.new(kit, 404)
 
 
 func build() -> void:
@@ -357,13 +360,13 @@ func _trees() -> void:
 		if r < 14.0 or (absf(p.x) < 3.0 and absf(p.z) > 14):
 			continue
 		placed += 1
-		var tall := rng.randf_range(8, 16)
-		k.cyl(root, 0.24, tall * 0.5, p + Vector3(0, tall * 0.25, 0), Color(0.25, 0.2, 0.16), {"sides": 5, "solid": r < 30})
-		var green := Color(0.2, 0.32, 0.22).lerp(Color(0.28, 0.36, 0.26), rng.randf())
-		for tier in 3:
-			var rad := (2.2 - tier * 0.55) * tall / 10.0
-			var y := tall * (0.35 + tier * 0.2)
-			k.cyl(root, rad, tall * 0.35, p + Vector3(0, y + tall * 0.15, 0), green.lightened(tier * 0.05), {"top": 0.0, "sides": 6})
+		var tall := rng.randf_range(8, 17)
+		trees.pine(root, p, tall, {"solid": r < 30})
+	# The clearing's own trees: an old oak by the cabin, birches by the board.
+	trees.oak(root, Vector3(-9.5, 0, -2.5), 9.0, {"bare": 0.15})
+	trees.birch(root, Vector3(-6.0, 0, 12.5), 7.0)
+	trees.birch(root, Vector3(-7.4, 0, 14.0), 5.5)
+	trees.birch(root, Vector3(8.5, 0, 12.0), 6.5)
 
 
 func _tower() -> void:

@@ -62,6 +62,21 @@ func mat(color: Color, pattern := Pattern.PLAIN, glow := 0.0, fog_end := 70.0) -
 	return m
 
 
+## The material every tree shares: colours come from the tree mesh, and it sways.
+func tree_mat() -> ShaderMaterial:
+	if _materials.has("tree"):
+		return _materials["tree"]
+	var m := ShaderMaterial.new()
+	m.shader = PS1
+	m.set_shader_parameter("albedo", Color.WHITE)
+	m.set_shader_parameter("grain", grain)
+	m.set_shader_parameter("vertex_tint", true)
+	m.set_shader_parameter("sway", 1.0)
+	m.set_shader_parameter("fog_end", 70.0)
+	_materials["tree"] = m
+	return m
+
+
 ## See-through glass. `dirt` 0 = clean, 1 = covered in ash.
 func glass_mat(dirt := 0.35, tint := Color(0.55, 0.62, 0.66, 0.28)) -> ShaderMaterial:
 	var key := "glass/%s/%s" % [dirt, tint.to_html()]
