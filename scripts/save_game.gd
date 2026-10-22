@@ -57,11 +57,19 @@ static func save(game: Node) -> void:
 		"cat": {"trust": game.cat.trust, "inside": game.cat.moved_in, "collar": game.cat.collar_on()},
 		"radio": {"on": radio.on, "freq": radio.freq, "heard": radio.heard_counts(), "antenna": radio.antenna},
 		"harvest": harvest, "tried": tried,
+		"wren": _wren_state(tree),
 		"bowl_day": bowl.fed_day if bowl else -1,
 		"tea_day": kettle.tea_day if kettle else -1,
 	}
 	var f := FileAccess.open(PATH, FileAccess.WRITE)
 	f.store_string(JSON.stringify(data, "  "))
+
+
+static func _wren_state(tree: SceneTree) -> Dictionary:
+	var w := tree.get_first_node_in_group("wren")
+	if w == null:
+		return {}
+	return {"met": w.met, "topics": w.topics, "errands": w.errands}
 
 
 static func load_into(game: Node) -> bool:
@@ -105,6 +113,12 @@ static func load_into(game: Node) -> bool:
 	var harvest: Dictionary = data.get("harvest", {})
 	for h in tree.get_nodes_in_group("harvest"):
 		h.picked_day = int(harvest.get(key(h), -1))
+	var wren := tree.get_first_node_in_group("wren")
+	var ws: Dictionary = data.get("wren", {})
+	if wren and not ws.is_empty():
+		wren.met = bool(ws.met)
+		wren.topics = Array(ws.topics)
+		wren.errands = Array(ws.errands)
 	var tried: Array = data.get("tried", [])
 	for l in tree.get_nodes_in_group("lock"):
 		l.tried = key(l) in tried

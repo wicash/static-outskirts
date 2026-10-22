@@ -330,9 +330,19 @@ func _forest() -> void:
 		var p := Vector3(rng.randf_range(-40, 40), 0.25, rng.randf_range(-48, -60))
 		k.beam(world, p, p + Vector3(rng.randf_range(-4, 4), 0, rng.randf_range(-1, 1)), 0.4, Color(0.28, 0.24, 0.2))  # fallen logs
 	# A string of lanterns between two trees at the forest edge, unlit. For now.
+	# Ranger Wren lights them once she knows you're home (see main.gd).
 	for i in 8:
 		var p := Vector3(-8 + i * 0.9, 2.6 - sin(i / 7.0 * PI) * 0.4, -49)
-		k.ball(world, Vector3(0.12, 0.16, 0.12), p, Color(0.75, 0.6, 0.35), {"sides": 5})
+		var lantern := k.ball(world, Vector3(0.12, 0.16, 0.12), p, Color(0.75, 0.6, 0.35), {"sides": 5})
+		lantern.add_to_group("edge_lantern")
+	var glow := OmniLight3D.new()
+	glow.light_color = Color(1.0, 0.75, 0.45)
+	glow.light_energy = 1.2
+	glow.omni_range = 7.0
+	glow.position = Vector3(-4.8, 2.2, -48.6)
+	glow.visible = false
+	glow.add_to_group("edge_lantern")
+	world.add_child(glow)
 	k.beam(world, Vector3(-8.5, 2.7, -49), Vector3(-1.2, 2.7, -49), 0.01, Color(0.1, 0.1, 0.1))
 
 

@@ -22,6 +22,8 @@ const SaveGame := preload("res://scripts/save_game.gd")
 const Title := preload("res://scripts/title.gd")
 const East := preload("res://scripts/east.gd")
 const Walkie := preload("res://scripts/walkie.gd")
+const Station := preload("res://scripts/station.gd")
+const WrenScript := preload("res://scripts/wren.gd")
 
 ## How many screen pixels make up one game pixel. Bigger = chunkier.
 const PIXEL_SIZE := 2
@@ -54,7 +56,7 @@ var _chime_big: AudioStreamPlayer
 var inventory := {}            # item id -> count
 var journal_entries: Array = []  # [day, text]
 var _paper: Control
-var _paper_mode := ""          # "", "journal", "backpack" or "map"
+var _paper_mode := ""          # "", "journal", "backpack", "map" or "wren"
 var _journal_hint: Label
 
 # Tom's tape, when it's playing.
@@ -307,6 +309,8 @@ func _build_alder_street() -> void:
 	])
 	Aftermath.new(kit, world).build()
 	East.new(kit, world).build()
+	Station.trail_entrance(kit, world)
+	Station.new(kit, world).build()
 
 
 func _build_cars() -> void:
@@ -551,6 +555,8 @@ func comfort() -> int:
 		c += 1
 	if found_count("memory") >= 4:
 		c += 1  # the lost things on the board make it feel lived in
+	if lanterns_lit():
+		c += 1  # someone up at the station can see you're home
 	return c
 
 
@@ -587,6 +593,7 @@ func _on_title(choice: String) -> void:
 	if choice == "continue":
 		SaveGame.load_into(self)
 		_refresh_memory_board()
+		_refresh_lanterns()
 		weather.set_day(clock.day)
 		clock.refresh_night_things()
 	_title.queue_free()
@@ -637,6 +644,140 @@ func add_items(ids: Array) -> String:
 	if counts.has("walkie"):
 		toast("Hold R to listen for Ranger caches", GOLD.lightened(0.3))
 	return "(Into your backpack: %s)" % ", ".join(parts)
+
+
+# --- The trail and Ranger Wren -------------------------------------------------------
+
+## Walks the trail: fade out, an hour passes, fade in somewhere else.
+func travel(dest: Vector3, yaw: float, line: String) -> void:
+	player.frozen = true
+	var t := create_tween()
+	t.tween_property(_fade, "color:a", 1.0, 1.0)
+	await t.finished
+	player.global_position = dest
+	player.rotation.y = yaw
+	player.velocity = Vector3.ZERO
+	clock.skip(1.0)
+	await get_tree().create_timer(0.6).timeout
+	_show_message(line)
+	var t2 := create_tween()
+	t2.tween_property(_fade, "color:a", 0.0, 1.5)
+	await t2.finished
+	player.frozen = false
+
+
+func journal_has(text: String) -> bool:
+	for e in journal_entries:
+		if text in e[1]:
+			return true
+	return false
+
+
+func lanterns_lit() -> bool:
+	var wren := get_tree().get_first_node_in_group("wren")
+	return wren != null and "seeds" in wren.errands
+
+
+## The lanterns at the forest edge behind Alder Street, once Wren lights them.
+func _refresh_lanterns() -> void:
+	var lit := lanterns_lit()
+	for n in get_tree().get_nodes_in_group("edge_lantern"):
+		if n is OmniLight3D:
+			n.visible = lit
+		elif n is MeshInstance3D and lit:
+			n.material_override = kit.mat(Color(1.0, 0.78, 0.45), Kit.Pattern.PLAIN, 2.0)
+
+
+func talk_to_wren(wren: Node) -> void:
+	var line := "\"Sam! Kettle's on. Moss, budge up.\""
+	if not wren.met:
+		wren.met = true
+		line = "\"There you are. Sam, isn't it? Sam Hale, 4 Alder Street.\" She laughs at your face. \"Your name's been read out on the radio every night for two months, love. Sit down. Kettle's on.\""
+		write_journal("Met Ranger Wren at the station up the trail. She knew my name before I said it.")
+		chime(true)
+	elif cat and cat.moved_in and not "grace" in wren.topics:
+		line = "\"No cat? Bet he's made himself at home at yours. Sensible animal.\""
+	_wren_page(wren, line)
+
+
+func _wren_topics(wren: Node) -> Array:
+	var out: Array = []
+	for id in WrenScript.TOPICS:
+		if id in wren.topics:
+			continue
+		var ok := true
+		match id:
+			"list":
+				ok = "voice" in wren.topics
+			"grace":
+				ok = cat.moved_in or cat.collar_on() or has_item("collar")
+			"train":
+				ok = journal_has("HELD eleven")
+			"caches":
+				ok = found_count("cache") >= 1
+			"tower":
+				ok = "list" in wren.topics and wren.errands.size() == WrenScript.ERRANDS.size()
+		if ok:
+			out.append(id)
+	return out
+
+
+func _wren_list(wren: Node) -> String:
+	var text := ""
+	for id in WrenScript.ERRANDS:
+		var e: Array = WrenScript.ERRANDS[id]
+		text += "  %s  %s\n" % ["✓" if id in wren.errands else "·", e[0]]
+	return text
+
+
+func _wren_page(wren: Node, said: String) -> void:
+	var text := said + "\n\n[b]Wren's list[/b]\n" + _wren_list(wren)
+	_paper.open("Ranger Wren", text, "Esc to leave")
+	for id in _wren_topics(wren):
+		_paper.add_button(WrenScript.TOPICS[id][0], _wren_topic.bind(wren, id))
+	for id in WrenScript.ERRANDS:
+		var e: Array = WrenScript.ERRANDS[id]
+		if not id in wren.errands and inventory.get(e[1], 0) >= e[2]:
+			_paper.add_button("Give her: " + e[0], _wren_errand.bind(wren, id))
+	_paper.add_button("Goodbye", _close_paper)
+	_paper_mode = "wren"
+	_paper_opened()
+
+
+func _wren_topic(wren: Node, id: String) -> void:
+	var t: Array = WrenScript.TOPICS[id]
+	var said: String = t[1]
+	if id == "caches":
+		var n := found_count("cache")
+		if n < 6:
+			said = "\"%d of my tins? Good. Keep that walkie on. They're all within a mile of Mill Road.\"" % n
+			_wren_page(wren, said)
+			return
+		said = "\"All six! Nobody's ever found all six.\" She digs in her coat and presses a little tin into your hand: her own tea, and two candles."
+		add_items(["tea", "candle", "candle"])
+		write_journal("Found all six of Wren's caches. She gave me her own tea.")
+	wren.topics.append(id)
+	if t[2] != "":
+		write_journal(t[2])
+	if id == "grace":
+		chime(true)
+	_wren_page(wren, said)
+
+
+func _wren_errand(wren: Node, id: String) -> void:
+	var e: Array = WrenScript.ERRANDS[id]
+	for i in int(e[2]):
+		take_item(e[1])
+	wren.errands.append(id)
+	toast("Wren's list  %d / %d" % [wren.errands.size(), WrenScript.ERRANDS.size()], GOLD)
+	if not (e[4] as Array).is_empty():
+		add_items(e[4])
+	else:
+		chime(true)
+	if id == "seeds":
+		_refresh_lanterns()
+		write_journal("Wren is lighting lanterns at the forest edge behind Alder Street, so she can see from the mast that I'm home.")
+	_wren_page(wren, e[3])
 
 
 # --- Pickups, finds and the map ------------------------------------------------------
@@ -727,7 +868,7 @@ func _refresh_memory_board() -> void:
 		slot.visible = int(slot.get_meta("i")) < n
 
 
-const AREAS := [["alder", "Alder Street"], ["savoy", "The Savoy garage"], ["allotments", "Mill Road allotments"], ["train", "The 6:40 train"]]
+const AREAS := [["alder", "Alder Street"], ["savoy", "The Savoy garage"], ["allotments", "Mill Road allotments"], ["train", "The 6:40 train"], ["station", "The Ranger Station"]]
 
 
 func _open_map() -> void:
@@ -763,6 +904,9 @@ func _open_map() -> void:
 	text += "\n[b]Locked doors[/b]\n" + locked
 	if unknown > 0:
 		text += "  [i]%d more you haven't tried yet.[/i]\n" % unknown
+	var wren := get_tree().get_first_node_in_group("wren")
+	if wren and wren.met:
+		text += "\n[b]Wren's list[/b]\n" + _wren_list(wren)
 	var today := ""
 	var crop := get_tree().get_first_node_in_group("harvest")
 	if crop and crop.times_used > 0:
@@ -1121,8 +1265,40 @@ func _selftest_mill_road() -> void:
 		await get_tree().physics_frame
 	Input.action_release("move_forward")
 	print("after ramp ", player.global_position)
-	# And can't walk through the closed shop wall from outside.
 	print("inventory ", inventory)
+	await _selftest_station()
+
+
+func _selftest_station() -> void:
+	print("--- Ranger Station ---")
+	var trail := _node_with_prompt("Follow the trail north")
+	trail.interact()
+	for i in 200:
+		await get_tree().process_frame
+	print("at ", player.global_position, " hour ", clock.hour)
+	var wren := get_tree().get_first_node_in_group("wren")
+	wren.interact()
+	print(_paper._body.get_parsed_text().left(120))
+	for id in ["who", "lights", "voice", "list", "grace", "train", "caches"]:
+		if id in _wren_topics(wren):
+			_wren_topic(wren, id)
+			print(id, " -> ", _paper._body.get_parsed_text().left(90))
+		else:
+			print(id, " not available")
+	add_items(["tomatoes", "seeds"])
+	for id in WrenScript.ERRANDS:
+		if not id in wren.errands and inventory.get(WrenScript.ERRANDS[id][1], 0) >= WrenScript.ERRANDS[id][2]:
+			_wren_errand(wren, id)
+	print("errands ", wren.errands, " lanterns ", lanterns_lit(), " tower available ", "tower" in _wren_topics(wren))
+	if "tower" in _wren_topics(wren):
+		_wren_topic(wren, "tower")
+	_close_paper()
+	print("board -> ", _node_with_prompt("Read the check-in board").interact().left(60))
+	print("gate -> ", _lock_named("The tower road gate").interact())
+	_node_with_prompt("Walk back down the trail").interact()
+	for i in 200:
+		await get_tree().process_frame
+	print("back at ", player.global_position, " comfort ", comfort())
 
 
 func _loadtest() -> void:
@@ -1136,6 +1312,8 @@ func _loadtest() -> void:
 	print("locks open ", opened, " caches ", found_count("cache"), " memories ", found_count("memory"), " antenna ", radio.antenna)
 	_refresh_memory_board()
 	print("board slots shown ", get_tree().get_nodes_in_group("memory_slot").filter(func(n): return n.visible).size())
+	var wren := get_tree().get_first_node_in_group("wren")
+	print("wren met ", wren.met, " topics ", wren.topics.size(), " errands ", wren.errands, " lanterns ", lanterns_lit())
 	get_tree().quit()
 
 
@@ -1186,6 +1364,11 @@ func _maybe_take_screenshot() -> void:
 		"--signalbox": [Vector3(100.5, 0.1, -40.5), -2.6, -6.0],
 		"--no7": [Vector3(16.0, 0.1, 9.2), PI + 0.15, 8.0],
 		"--board": [Vector3(0.6, 0.1, -13.9), 1.35, -10.0],
+		"--station": [Vector3(0, 0.1, -379.5), 0.08, -4.0],
+		"--fire": [Vector3(2.4, 0.1, -393.6), -0.5, 12.0],
+		"--cabin": [Vector3(2.6, 0.1, -407.0), 0.95, 14.0],
+		"--trailhead": [Vector3(83.5, 0.1, -42.5), 0.25, -6.0],
+		"--lanterns": [Vector3(-3.0, 0.1, -38.0), 0.05, -14.0],
 	}
 	for key in views:
 		if key in args:
@@ -1219,6 +1402,11 @@ func _maybe_take_screenshot() -> void:
 			c.times_used = 1
 			c.after_load()
 		_open_map()
+	if "--lit" in args:
+		get_tree().get_first_node_in_group("wren").errands = ["seeds"]
+		_refresh_lanterns()
+	if "--wren" in args:
+		talk_to_wren(get_tree().get_first_node_in_group("wren"))
 	if "--toasts" in args:
 		add_items(["bolt_cutters", "soup", "soup"])
 		toast("Ranger caches  3 / 6", Color(0.6, 1.0, 0.6))

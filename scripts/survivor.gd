@@ -15,14 +15,22 @@ var _head: Node3D
 var _phase := 0.0
 
 
-func build(k: Kit) -> void:
-	var coat := Color(0.93, 0.72, 0.2)
+## `look` lets other people reuse the body (see station.gd for Ranger Wren):
+## coat, tights, boots, skin, hair, hat, scarf, iris colours; "hat_style"
+## ("beanie" or "brim"); "backpack" (bool).
+var look := {}
+
+
+func build(k: Kit, with_look := {}) -> void:
+	look = with_look
+	var coat: Color = look.get("coat", Color(0.93, 0.72, 0.2))
 	var coat_dark := coat.darkened(0.18)
-	var tights := Color(0.2, 0.2, 0.28)
-	var boots := Color(0.72, 0.16, 0.14)
-	var skin := Color(0.96, 0.8, 0.68)
-	var hair := Color(0.45, 0.25, 0.15)
-	var hat := Color(0.2, 0.55, 0.55)
+	var tights: Color = look.get("tights", Color(0.2, 0.2, 0.28))
+	var boots: Color = look.get("boots", Color(0.72, 0.16, 0.14))
+	var skin: Color = look.get("skin", Color(0.96, 0.8, 0.68))
+	var hair: Color = look.get("hair", Color(0.45, 0.25, 0.15))
+	var hat: Color = look.get("hat", Color(0.2, 0.55, 0.55))
+	var scarf: Color = look.get("scarf", Kit.FABRIC_RED)
 	var cream := Color(0.95, 0.92, 0.84)
 
 	# Legs pivot at the hips: dark tights and chunky red wellies.
@@ -45,8 +53,8 @@ func build(k: Kit) -> void:
 		k.box(_torso, Vector3(0.11, 0.08, 0.02), Vector3(s * 0.12, 0.05, -0.155), coat_dark)  # pockets
 	k.box(_torso, Vector3(0.3, 0.07, 0.28), Vector3(0, 0.53, 0), coat_dark)  # collar
 	# Little red-and-cream knitted scarf.
-	k.box(_torso, Vector3(0.24, 0.07, 0.22), Vector3(0, 0.58, 0), Kit.FABRIC_RED)
-	k.box(_torso, Vector3(0.07, 0.18, 0.03), Vector3(-0.07, 0.48, -0.14), Kit.FABRIC_RED)
+	k.box(_torso, Vector3(0.24, 0.07, 0.22), Vector3(0, 0.58, 0), scarf)
+	k.box(_torso, Vector3(0.07, 0.18, 0.03), Vector3(-0.07, 0.48, -0.14), scarf)
 	k.box(_torso, Vector3(0.071, 0.025, 0.031), Vector3(-0.07, 0.44, -0.14), cream)
 
 	# Head: big, with a painted anime-style face (see _face_texture), spiky
@@ -77,22 +85,30 @@ func build(k: Kit) -> void:
 		k.box(braid, Vector3(0.07, 0.025, 0.07), Vector3(s * 0.01, -0.26, 0), hat)  # hair tie
 		k.prism(braid, Vector3(0.06, 0.07, 0.06), Vector3(s * 0.01, -0.31, 0), hair, {"rot": Vector3(0, 0, 180)})  # tuft
 		_braids.append(braid)
-	# Beanie with a folded brim and a pompom.
-	k.box(_head, Vector3(0.35, 0.13, 0.32), Vector3(0, 0.375, 0.02), hat)
-	k.box(_head, Vector3(0.36, 0.05, 0.33), Vector3(0, 0.315, 0.02), hat.darkened(0.2))
-	k.ball(_head, Vector3(0.12, 0.12, 0.12), Vector3(0, 0.475, 0.03), cream)
-	# The cowlick that no hat can hold down.
-	k.beam(_head, Vector3(0.1, 0.33, -0.12), Vector3(0.15, 0.4, -0.16), 0.016, hair)
-	k.beam(_head, Vector3(0.15, 0.4, -0.16), Vector3(0.12, 0.44, -0.2), 0.014, hair)
+	if look.get("hat_style", "beanie") == "brim":
+		# A ranger's wide-brimmed hat with a band.
+		k.cyl(_head, 0.29, 0.025, Vector3(0, 0.31, 0.02), hat, {"sides": 10})
+		k.cyl(_head, 0.17, 0.14, Vector3(0, 0.39, 0.02), hat, {"top": 0.15, "sides": 8})
+		k.cyl(_head, 0.175, 0.035, Vector3(0, 0.34, 0.02), hat.darkened(0.35), {"sides": 8})
+	else:
+		# Beanie with a folded brim and a pompom.
+		k.box(_head, Vector3(0.35, 0.13, 0.32), Vector3(0, 0.375, 0.02), hat)
+		k.box(_head, Vector3(0.36, 0.05, 0.33), Vector3(0, 0.315, 0.02), hat.darkened(0.2))
+		k.ball(_head, Vector3(0.12, 0.12, 0.12), Vector3(0, 0.475, 0.03), cream)
+		# The cowlick that no hat can hold down.
+		k.beam(_head, Vector3(0.1, 0.33, -0.12), Vector3(0.15, 0.4, -0.16), 0.016, hair)
+		k.beam(_head, Vector3(0.15, 0.4, -0.16), Vector3(0.12, 0.44, -0.2), 0.014, hair)
 
 	# Arms pivot at the shoulders: long raincoat sleeves and mittens.
 	for s in [-1.0, 1.0]:
 		var shoulder := k.group(_torso, Vector3(s * 0.22, 0.47, 0), 0)
 		k.box(shoulder, Vector3(0.1, 0.3, 0.11), Vector3(0, -0.14, 0), coat)
 		k.box(shoulder, Vector3(0.12, 0.05, 0.13), Vector3(0, -0.29, 0), coat_dark)  # cuff
-		k.box(shoulder, Vector3(0.08, 0.08, 0.08), Vector3(0, -0.35, 0), Kit.FABRIC_RED)  # mitten
+		k.box(shoulder, Vector3(0.08, 0.08, 0.08), Vector3(0, -0.35, 0), look.get("mitten", Kit.FABRIC_RED))  # mitten
 		_arms.append(shoulder)
 
+	if not look.get("backpack", true):
+		return
 	# Small backpack with a cat patch and a dangling keyring torch.
 	k.box(_torso, Vector3(0.26, 0.28, 0.13), Vector3(0, 0.3, 0.19), Color(0.42, 0.5, 0.62))
 	k.box(_torso, Vector3(0.2, 0.1, 0.03), Vector3(0, 0.2, 0.26), Color(0.36, 0.43, 0.55))
@@ -136,8 +152,8 @@ func _face_texture(skin: Color) -> Image:
 	var img := Image.create(32, 32, false, Image.FORMAT_RGBA8)
 	img.fill(skin)
 	var lash := Color(0.16, 0.08, 0.07)
-	var iris_top := Color(0.32, 0.16, 0.1)
-	var iris_low := Color(0.88, 0.58, 0.26)
+	var iris_top: Color = look.get("iris", Color(0.32, 0.16, 0.1))
+	var iris_low: Color = look.get("iris_low", Color(0.88, 0.58, 0.26))
 	var pupil := Color(0.18, 0.08, 0.06)
 	for side: int in [0, 1]:
 		var x0: int = 6 if side == 0 else 19

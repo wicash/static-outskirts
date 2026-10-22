@@ -139,6 +139,31 @@ collect, and a tool chain that keeps unlocking new places.
 ![Lost & Found](docs/millroad/board.png)
 ![The map](docs/millroad/map.png)
 
+## The Ranger Station
+
+At the trail post at the north edge of Mill Road, **follow the trail north**:
+an hour's walk (a fade) brings you to a clearing in the pines.
+
+- **Ranger Wren**, by the fire, the first living person you meet. She knows
+  your name before you say it. Talking to her opens topics as you find things
+  out: who she is, the lights in the woods, the voice on 91.3, why your name is
+  on the list, Grace Okafor (once Biscuit is yours), the 6:40 (once you've read
+  the driver's log), her caches, and finally the tower road.
+- **Wren's list:** 3 tomatoes, 2 batteries and a seed packet, swapped for
+  candles and rations. The seeds get her to light the lanterns at the forest
+  edge behind Alder Street, so she can see from the mast that you're home
+  (and home feels cozier).
+- **The station:** Wren's cabin with the radio desk and her map, the mast
+  that talks to the tower, string lights, Moss the old dog asleep by the fire,
+  and the check-in board, where someone has pinned a card for you.
+- **The tower road gate**, north of the cabin. Wren keeps the key. Not yet.
+
+![Arriving at the station](docs/station/station.png)
+![Wren by the fire](docs/station/fire.png)
+![Talking to Wren](docs/station/wren.png)
+![Wren's cabin](docs/station/cabin.png)
+![The lanterns behind Alder Street](docs/station/lanterns.png)
+
 ## Weather, comfort and saving
 
 - **Title screen** over your kitchen: Continue (if there's a save), New game, Quit.
@@ -213,7 +238,7 @@ All in `scripts/aftermath.gd`. The city (and the flash) was to the south.
 ## How the look works
 
 - `scripts/kit.gd` holds the shared shapes and materials; `furniture.gd`,
-  `houses.gd`, `cars.gd`, `street.gd`, `aftermath.gd` and `east.gd` (Mill Road) build everything from them.
+  `houses.gd`, `cars.gd`, `street.gd`, `aftermath.gd`, `east.gd` (Mill Road) and `station.gd` (the Ranger Station) build everything from them.
 - `scripts/main.gd` renders the 3D world at half resolution and scales it up with hard pixels.
 - `shaders/ps1.gdshader` snaps vertices to a fine grid (a light PS1 wobble), warps
   textures (affine mapping), lights per vertex, and fades to fog.
@@ -228,7 +253,7 @@ things around while we find the feel. Real models can replace them later.
 ## Screenshots from the command line
 
 ```
-godot --path . -- --shot=out.png [--home | --kitchen | --bedroom | --yourhouse | --okafor | --street | --lot | --busstop | --cat | --car | --crash | --van | --road | --flash | --decon | --help | --memorial | --wires | --shelter | --millroad | --garage | --shop | --backroom | --allotments | --greenhouse | --sheds | --crossing | --carriage | --cab | --signalbox | --no7 | --board] [--open] [--found] [--map] [--toasts] [--third | --face [--close]] [--dusk | --night] [--torch] [--tuning] [--journal | --backpack] [--rain | --ashfall] [--candles] [--title]
+godot --path . -- --shot=out.png [--home | --kitchen | --bedroom | --yourhouse | --okafor | --street | --lot | --busstop | --cat | --car | --crash | --van | --road | --flash | --decon | --help | --memorial | --wires | --shelter | --millroad | --garage | --shop | --backroom | --allotments | --greenhouse | --sheds | --crossing | --carriage | --cab | --signalbox | --no7 | --board | --station | --fire | --cabin | --trailhead | --lanterns] [--wren] [--lit] [--open] [--found] [--map] [--toasts] [--third | --face [--close]] [--dusk | --night] [--torch] [--tuning] [--journal | --backpack] [--rain | --ashfall] [--candles] [--title]
 godot --path . -- --selftest   # presses E on a few things, runs the Mill Road tool chain, saves, prints what happens
 godot --path . -- --loadtest   # loads that save and prints it
 ```
