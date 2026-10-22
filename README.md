@@ -207,6 +207,22 @@ along or to stay (cat_pet.gd):
 ![Biscuit by the radio](docs/biscuit/radio.png)
 ![Biscuit at the station with Moss](docs/biscuit/station.png)
 
+## Sound
+
+All of it is made in code (ambience.gd, weather.gd), like everything else:
+
+- **Music**: two short piano pieces, "Outskirts" for the day and "Lanterns",
+  a music-box lullaby, for after dark. They're played now and then with long
+  quiet gaps, and the day piece plays on the title screen. They step aside
+  for the radio, Tom's tape, conversations and the broadcast.
+- **Birds**: songbirds in the trees on dry days (more in the woods), crows
+  when it's grey or getting dark, and a tawny owl at night.
+- **Places**: Wren's fire crackles, and the tower generator chugs.
+- **Rain**: a hiss outside, and indoors a soft drumming of drops on the roof.
+
+`-- --soundtest` checks it all starts; `-- --musictest` writes the two
+pieces out as .wav files.
+
 ## Weather, comfort and saving
 
 - **Title screen** over your kitchen: Continue (if there's a save), New game, Quit.

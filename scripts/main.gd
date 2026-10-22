@@ -26,6 +26,7 @@ const Station := preload("res://scripts/station.gd")
 const WrenScript := preload("res://scripts/wren.gd")
 const Tower := preload("res://scripts/tower.gd")
 const InesScript := preload("res://scripts/ines.gd")
+const Ambience := preload("res://scripts/ambience.gd")
 
 ## How many screen pixels make up one game pixel. Bigger = chunkier.
 const PIXEL_SIZE := 2
@@ -53,6 +54,7 @@ var _walkie: Node3D = null
 var _walkie_label: Label
 var _chime_small: AudioStreamPlayer
 var _chime_big: AudioStreamPlayer
+var ambience: Node
 
 # What Sam carries and what she has written down.
 var inventory := {}            # item id -> count
@@ -101,6 +103,33 @@ func _ready() -> void:
 		_selftest()
 	elif "--loadtest" in args:
 		_loadtest()
+	elif "--soundtest" in args:
+		_start_ambience()
+		clock.hour = 9.0
+		weather.set_kind("clear")
+		var birds := 0
+		for i in 20:
+			await get_tree().create_timer(1.0).timeout
+			birds = maxi(birds, ambience.get_children().filter(func(c): return c is AudioStreamPlayer3D).size() - 2)
+		ambience._music_wait = 0.0
+		await get_tree().create_timer(1.0).timeout
+		print("tracks ", ambience._tracks.keys(), " music playing ", ambience._music.playing, " birds at once ", birds)
+		_play_tape()
+		await get_tree().create_timer(3.0).timeout
+		print("hushed for the tape: ", music_should_hush(), " volume ", snappedf(ambience._music.volume_db, 0.1))
+		get_tree().quit()
+	elif "--musictest" in args:
+		var t0 := Time.get_ticks_msec()
+		var d: Array = Ambience._day_notes()
+		var day := Ambience._render(d[0], d[1], false)
+		var t1 := Time.get_ticks_msec()
+		var n: Array = Ambience._night_notes()
+		var night := Ambience._render(n[0], n[1], true)
+		print("day %.1f s of music in %d ms, night %.1f s in %d ms" % [day.size() / 44100.0, t1 - t0, night.size() / 44100.0, Time.get_ticks_msec() - t1])
+		for pair in [["day", day], ["night", night]]:
+			var w := Ambience._wav(pair[1])
+			w.save_to_wav("/tmp/claude-0/music_%s.wav" % pair[0])
+		get_tree().quit()
 	elif "--qa" in args:
 		var qa: Node = preload("res://scripts/qa.gd").new()
 		add_child(qa)
@@ -108,6 +137,7 @@ func _ready() -> void:
 	elif Array(args).any(func(a): return a.begins_with("--shot=")):
 		_maybe_take_screenshot()
 	else:
+		_start_ambience()
 		_show_title()
 
 
@@ -451,6 +481,26 @@ func _spawn_cat(pos: Vector3) -> void:
 	cat.build(kit)
 
 
+## Music, birds and the sounds of places (ambience.gd). Not started for the
+## headless tests and screenshots.
+func _start_ambience() -> void:
+	ambience = Ambience.new()
+	ambience.player = player
+	ambience.clock = clock
+	ambience.weather = weather
+	ambience.game = self
+	add_child(ambience)
+
+
+## True while something else should be heard instead of the music: the radio
+## nearby, Tom's tape, a conversation or the two o'clock broadcast.
+func music_should_hush() -> bool:
+	if _tape_line >= 0 or _paper_mode in ["wren", "ines", "on_air"]:
+		return true
+	var radio := get_tree().get_first_node_in_group("radio")
+	return radio != null and radio.on and radio.global_position.distance_to(player.global_position) < 8.0
+
+
 ## Soft wind: filtered noise that swells and fades in gusts.
 var _wind: AudioStreamGeneratorPlayback
 var _wind_lp := 0.0
@@ -584,6 +634,8 @@ func _in_your_house() -> bool:
 # --- Title -------------------------------------------------------------------------
 
 func _show_title() -> void:
+	if ambience:
+		ambience.play_title_music()
 	_title = Title.new()
 	_hint.visible = false
 	_clock_label.visible = false

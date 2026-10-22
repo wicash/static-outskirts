@@ -21,6 +21,7 @@ var player: Node3D
 
 var _rain: CPUParticles3D
 var _playback: AudioStreamGeneratorPlayback
+var _drop := 0.0
 var _audio: AudioStreamPlayer
 var _lp := 0.0
 var _indoors := false
@@ -134,6 +135,9 @@ func _fill(rain: bool) -> void:
 		if rain:
 			_lp = lerpf(_lp, randf_range(-1.0, 1.0), smooth)
 			v = _lp * (1.6 if _indoors else 0.5)
-			if randf() < 0.0015:
-				v += randf_range(-0.6, 0.6)  # a drip
+			# Single drops: a soft patter on the roof indoors, splashes outside.
+			if randf() < (0.004 if _indoors else 0.0015):
+				_drop = randf_range(0.2, 0.6)
+			_drop *= 0.86 if _indoors else 0.7
+			v += _drop * randf_range(-1.0, 1.0) * (0.5 if _indoors else 1.0)
 		_playback.push_frame(Vector2(v, v))
