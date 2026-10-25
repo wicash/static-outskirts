@@ -28,6 +28,8 @@ const Tower := preload("res://scripts/tower.gd")
 const InesScript := preload("res://scripts/ines.gd")
 const Ambience := preload("res://scripts/ambience.gd")
 const PauseMenu := preload("res://scripts/pause_menu.gd")
+const Canal := preload("res://scripts/canal.gd")
+const Junction := preload("res://scripts/junction.gd")
 
 ## How many screen pixels make up one game pixel. Bigger = chunkier.
 const PIXEL_SIZE := 2
@@ -374,6 +376,8 @@ func _build_alder_street() -> void:
 	Station.trail_entrance(kit, world)
 	Station.new(kit, world).build()
 	Tower.new(kit, world).build()
+	Canal.new(kit, world).build()
+	Junction.new(kit, world).build()
 
 
 func _build_cars() -> void:
@@ -541,7 +545,7 @@ func _start_ambience() -> void:
 ## True while something else should be heard instead of the music: the radio
 ## nearby, Tom's tape, a conversation or the two o'clock broadcast.
 func music_should_hush() -> bool:
-	if _tape_line >= 0 or _paper_mode in ["wren", "ines", "on_air"]:
+	if _tape_line >= 0 or _paper_mode in ["wren", "ines", "npc", "on_air"]:
 		return true
 	var radio := get_tree().get_first_node_in_group("radio")
 	return radio != null and radio.on and radio.global_position.distance_to(player.global_position) < 8.0
@@ -662,6 +666,8 @@ func comfort() -> int:
 		c += 1  # the lost things on the board make it feel lived in
 	if lanterns_lit():
 		c += 1  # someone up at the station can see you're home
+	if has_item("mum_blanket"):
+		c += 1  # Mum's blanket on the bed
 	return c
 
 
@@ -900,6 +906,8 @@ func _wren_topic(wren: Node, id: String) -> void:
 		wren.tower_day = clock.day
 	if id == "ines_answer":
 		add_items(["tower_key"])
+	if id == "junction":
+		add_items(["canal_map"])
 	_wren_page(wren, said)
 
 
@@ -1010,6 +1018,75 @@ func _on_air_say(ines: Node) -> void:
 	_paper_mode = "ines"
 
 
+# --- Everyone else you can talk to (npc.gd) ---------------------------------------------
+
+func talk_to(npc: Node) -> void:
+	if npc.id == "mum" and not npc.met:
+		_reunion(npc)
+		return
+	var line: String = npc.greeting(self)
+	npc.met = true
+	_npc_page(npc, line)
+
+
+func _npc_page(npc: Node, said: String) -> void:
+	_paper.open(npc.who, said, "Esc to leave")
+	var all: Dictionary = npc.topic_list()
+	for t in npc.available(self):
+		_paper.add_button(all[t][0], _npc_topic.bind(npc, t))
+	_paper.add_button("Goodbye", _close_paper)
+	_paper_mode = "npc"
+	_paper_opened()
+
+
+func _npc_topic(npc: Node, t: String) -> void:
+	var d: Array = npc.topic_list()[t]
+	npc.topics.append(t)
+	if d[2] != "":
+		write_journal(d[2])
+	var said: String = npc.asked(self, t)
+	if said == "-":
+		return  # they've closed the conversation themselves (walking off somewhere)
+	_npc_page(npc, said if said != "" else d[1])
+
+
+func close_talk() -> void:
+	if _paper_mode != "":
+		_close_paper()
+
+
+func canal_drained() -> bool:
+	for n in get_tree().get_nodes_in_group("canal_paddle"):
+		return n.stage == 2
+	return false
+
+
+## Finding Mum. A few lines at a time, like the broadcast, then hers.
+func _reunion(mum: Node, step := 3.0) -> void:
+	var lines := [
+		"By the tent with the red cross, a woman is washing her hands in a basin. There's grey in her hair that wasn't there in March. She looks up because Grace is shouting your name across the whole camp.",
+		"She doesn't run. She stands very still with her hands dripping, as if moving might make you not real.",
+		"Then you're there, and she's holding your face in her wet hands and saying your name over and over, the way Ines reads it. Like it's the only one.",
+	]
+	if _biscuit_here():
+		lines.append("Biscuit sits down on her foot. Nobody notices for quite a while.")
+	lines.append("\"I knew,\" she says into your hair. \"I knew. I'd know.\"")
+	_paper.open("Hollow Junction", "", "")
+	_paper_mode = "on_air"
+	_paper_opened()
+	var text := ""
+	for l in lines:
+		text += ("\n\n" if text != "" else "") + l
+		_paper.open("Hollow Junction", text, "", true)
+		await get_tree().create_timer(step).timeout
+	_paper.add_button("Hold on to her", func():
+		mum.met = true
+		write_journal("Found Mum. Helen Hale, the nurse at Hollow Junction camp. She knew. She said she'd know, and she did.")
+		chime(true)
+		toast("Chapter two complete:  Hollow Junction", GOLD)
+		_npc_page(mum, "You stay like that until somebody brings you both tea, and then you drink it without letting go.\n\n\"Right,\" Mum says eventually, wiping her face with her sleeve. \"Right. Tell me everything.\""))
+
+
 # --- Pickups, finds and the map ------------------------------------------------------
 
 const GOLD := Color(1.0, 0.82, 0.35)
@@ -1098,7 +1175,7 @@ func _refresh_memory_board() -> void:
 		slot.visible = int(slot.get_meta("i")) < n
 
 
-const AREAS := [["alder", "Alder Street"], ["savoy", "The Savoy garage"], ["allotments", "Mill Road allotments"], ["train", "The 6:40 train"], ["station", "The Ranger Station"], ["tower", "The Hollow FM tower"]]
+const AREAS := [["alder", "Alder Street"], ["savoy", "The Savoy garage"], ["allotments", "Mill Road allotments"], ["train", "The 6:40 train"], ["station", "The Ranger Station"], ["tower", "The Hollow FM tower"], ["canal", "The canal path"], ["junction", "Hollow Junction camp"]]
 
 
 func _open_map() -> void:
@@ -1539,6 +1616,9 @@ func _selftest_station() -> void:
 	print("board -> ", _node_with_prompt("Read the check-in board").interact().left(60))
 	print("gate -> ", _lock_named("The tower road gate").interact())
 	await _selftest_tower(wren)
+	await _selftest_canal()
+	player.global_position = Station.ARRIVE + Vector3(0, 0, 2)
+	await get_tree().physics_frame
 	_node_with_prompt("Walk back down the trail").interact()
 	for i in 200:
 		await get_tree().process_frame
@@ -1646,6 +1726,84 @@ func _selftest_tower(wren: Node) -> void:
 	_close_paper()
 
 
+func _selftest_canal() -> void:
+	print("--- The canal ---")
+	player.global_position = Station.ORIGIN + Vector3(-20, 0.1, 6)
+	await get_tree().physics_frame
+	print("canal path -> ", _node_with_prompt("Take the path to the canal").interact())
+	for i in 200:
+		await get_tree().process_frame
+	print("at canal ", player.global_position, " biscuit ", cat.global_position.distance_to(player.global_position) < 4.0)
+	print("flood -> ", _node_with_prompt("Wade into the flood").interact().left(60))
+	var gear := get_tree().get_first_node_in_group("canal_paddle")
+	print("gear -> ", gear.interact().left(60), " stage ", gear.stage)
+	print("gear again -> ", gear.interact().left(60))
+	var door := _lock_named("Alf's cottage at the lock")
+	print("cottage -> ", door.interact().left(50), " open ", door.is_open)
+	print("windlass -> ", _node_with_prompt("Take the windlass off its hook").interact().left(60), " has ", has_item("windlass"))
+	print("log -> ", _node_with_prompt("Read Alf's lock log").interact().left(50))
+	print("boat -> ", _node_with_prompt("Search the narrowboat").interact().left(50))
+	print("wind -> ", gear.interact().left(60), " drained ", canal_drained())
+	await get_tree().create_timer(1.0).timeout
+	# Run the whole towpath, west to east.
+	player.global_position = Canal.ORIGIN + Vector3(-50, 0.1, 2.0)
+	player.rotation.y = -PI / 2.0
+	await get_tree().physics_frame
+	Input.action_press("move_forward")
+	Input.action_press("run")
+	for i in 2000:
+		await get_tree().physics_frame
+		if player.global_position.x > Canal.ORIGIN.x + 49.0:
+			break
+	Input.action_release("move_forward")
+	Input.action_release("run")
+	print("towpath run reached ", player.global_position, " ok ", player.global_position.x > Canal.ORIGIN.x + 49.0)
+	var grace: Node = null
+	for n in get_tree().get_nodes_in_group("npc"):
+		if n.id == "grace" and n.place == "canal":
+			grace = n
+	grace.interact()
+	print("grace: ", _paper._body.get_parsed_text().left(90))
+	print("grace topics ", grace.available(self))
+	for t in ["biscuit", "ask_biscuit", "sister", "water"]:
+		if t in grace.available(self):
+			_npc_topic(grace, t)
+	print("grace go available ", "go" in grace.available(self))
+	_npc_topic(grace, "go")
+	for i in 260:
+		await get_tree().process_frame
+	print("at junction ", player.global_position, " hour ", snappedf(clock.hour, 0.1), " grace gone ", not grace.visible)
+	var mum: Node = null
+	var dee: Node = null
+	for n in get_tree().get_nodes_in_group("npc"):
+		if n.id == "mum":
+			mum = n
+		if n.id == "dee":
+			dee = n
+	mum.interact()
+	await get_tree().create_timer(16.0).timeout
+	print("reunion: ", _paper._body.get_parsed_text().right(60))
+	for b in _paper._buttons.get_children():
+		if b.text == "Hold on to her":
+			b.pressed.emit()
+	print("mum met ", mum.met, " topics ", mum.available(self))
+	for t in ["names", "camp", "biscuit", "home", "hospital"]:
+		if t in mum.available(self):
+			_npc_topic(mum, t)
+	print("blanket ", has_item("mum_blanket"), " journal has St. Brigid's ", journal_has("St. Brigid's"))
+	_close_paper()
+	dee.interact()
+	for t in dee.available(self):
+		_npc_topic(dee, t)
+	_close_paper()
+	print("dee topics ", dee.topics)
+	print("board -> ", _node_with_prompt("Read the noticeboard").interact().left(40))
+	_node_with_prompt("Walk back along the canal").interact()
+	for i in 260:
+		await get_tree().process_frame
+	print("back at canal end ", player.global_position)
+
+
 func _loadtest() -> void:
 	await get_tree().process_frame
 	print("load -> ", SaveGame.load_into(self))
@@ -1660,6 +1818,9 @@ func _loadtest() -> void:
 	var wren := get_tree().get_first_node_in_group("wren")
 	print("wren met ", wren.met, " topics ", wren.topics.size(), " errands ", wren.errands, " lanterns ", lanterns_lit(), " tower_day ", wren.tower_day)
 	var ines := get_tree().get_first_node_in_group("ines")
+	for n in get_tree().get_nodes_in_group("npc"):
+		print("npc ", n.id, " met ", n.met, " topics ", n.topics, " visible ", n.visible)
+	print("canal drained ", canal_drained(), " blanket ", has_item("mum_blanket"))
 	print("ines met ", ines.met, " topics ", ines.topics, " gate open ", _lock_named("The tower road gate").is_open, " key ", has_item("tower_key"))
 	get_tree().quit()
 
@@ -1726,6 +1887,15 @@ func _maybe_take_screenshot() -> void:
 		"--bedroom2": [Vector3(-1.9, 0.1, -11.4), 0.35, 38.0],
 		"--radiotable": [Vector3(1.0, 0.1, -10.3), -0.8, 30.0],
 		"--catfire": [Vector3(1.2, 0.1, -392.4), -0.45, 22.0],
+		"--canal": [Vector3(-452, 0.1, -397.5), -PI / 2.0 + 0.12, 4.0],
+		"--lock": [Vector3(-406, 0.1, -397.0), -PI / 2.0 + 0.35, 10.0],
+		"--flood": [Vector3(-397, 0.1, -397.6), -PI / 2.0 + 0.05, 8.0],
+		"--floodtop": [Vector3(-384, 7.0, -391.0), -0.4, 320.0],
+		"--cottage": [Vector3(-27.5 - 400.0, 0.1, -397.0), PI + 0.35, -4.0],
+		"--bridge": [Vector3(-357, 0.1, -398.2), -PI / 2.0 + 0.12, 4.0],
+		"--junction": [Vector3(-400, 0.1, -683.0), 0.0, -2.0],
+		"--clinic": [Vector3(-408.6, 0.1, -693.4), 0.68, 6.0],
+		"--campfire": [Vector3(-394.5, 0.1, -689.5), 0.8, 8.0],
 		"--names": [Vector3(-5.6, 0.1, -496.6), -0.05, 2.0],
 		"--platform": [Vector3(7.0, 18.1, -497.0), 0.0, -6.0],
 		"--platformsouth": [Vector3(7.0, 18.1, -499.0), PI, -10.0],
@@ -1801,6 +1971,16 @@ func _maybe_take_screenshot() -> void:
 		_pause.open()
 		if "--settings" in args:
 			_pause._settings_page()
+	if "--drained" in args:
+		get_tree().get_first_node_in_group("canal_paddle").canal.drain(true)
+	if "--reunion" in args:
+		for n in get_tree().get_nodes_in_group("npc"):
+			if n.id == "mum":
+				_reunion(n, 0.0)
+	if "--grace" in args:
+		for n in get_tree().get_nodes_in_group("npc"):
+			if n.id == "grace" and n.place == "canal":
+				talk_to(n)
 	if "--ines" in args:
 		talk_to_ines(get_tree().get_first_node_in_group("ines"))
 	if "--onair" in args:

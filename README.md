@@ -189,6 +189,40 @@ through the pines to the Hollow FM mast (tower.gd):
 ![Two o'clock](docs/tower/onair.png)
 ![From the platform](docs/tower/platform.png)
 
+## Chapter two: the canal path and Hollow Junction
+
+After the broadcast, Ines says go and find your mum. Wren draws you the long
+way round on the back of a ration box, since the overpass is down.
+
+- **The canal path** (canal.gd): west from Wren's clearing to an old canal.
+  There's a towpath, the narrowboat Kingfisher, Alf the lock-keeper's
+  cottage, and Lock 14. Past the lock, the canal has burst its bank over the
+  towpath. Cut the chain on the paddle gear (bolt cutters). Then lever Alf's
+  door (crowbar), take his windlass, and wind the paddles: the flood drains
+  through the gate and the path comes back out. Grace Okafor is waiting
+  under the bridge at the far end. If Biscuit's with you, that's a moment.
+- **Hollow Junction camp** (junction.gd): a hundred and sixty people
+  around an old railway junction, in tents and in carriages turned into
+  homes and a school. There's a fire with soup always on, Dee Ames's wind
+  turbine, and a noticeboard headed THE LIVING.
+- **Mum** (people/mum.gd): the camp nurse. Finding her ends chapter two.
+  She gives you her patchwork blanket for your bed (+1 comfort at home) and
+  tells you what the camp needs: antibiotics and insulin, from the pharmacy
+  at St. Brigid's, in the city. That's chapter three.
+
+People from chapter two on use npc.gd: a greeting, topics that unlock, and
+things that happen when you ask (people/grace.gd, mum.gd, dee.gd).
+
+![The towpath](docs/chapter2/canal.png)
+![Lock 14](docs/chapter2/lock.png)
+![The flood over the towpath](docs/chapter2/flood.png)
+![After winding the paddles](docs/chapter2/drained.png)
+![Alf's cottage](docs/chapter2/cottage.png)
+![Grace under the bridge](docs/chapter2/bridge.png)
+![Hollow Junction](docs/chapter2/junction.png)
+![Mum at the clinic](docs/chapter2/clinic.png)
+![The camp fire](docs/chapter2/campfire.png)
+
 ## Biscuit
 
 Biscuit starts as a shy stray. Feed him and pet him and he moves in. Once he
@@ -353,7 +387,7 @@ finish and saves; `--loadtest` loads that save and prints what came back.
 ## Screenshots from the command line
 
 ```
-godot --path . -- --shot=out.png [--home | --kitchen | --bedroom | --yourhouse | --okafor | --street | --lot | --busstop | --cat | --car | --crash | --van | --road | --flash | --decon | --help | --memorial | --wires | --shelter | --millroad | --garage | --shop | --backroom | --allotments | --greenhouse | --sheds | --crossing | --carriage | --cab | --signalbox | --no7 | --board | --station | --fire | --cabin | --trailhead | --lanterns | --towerroad | --tower | --hut | --names | --bedroom2 | --radiotable | --catfire | --platform | --platformsouth | --forest | --yards | --backyards] [--gallery] [--wren] [--ines] [--onair] [--catbed | --catradio | --catstation] [--pause | --settings] [--lit] [--open] [--found] [--map] [--toasts] [--third | --face [--close]] [--dusk | --night] [--torch] [--tuning] [--journal | --backpack] [--rain | --ashfall] [--candles] [--title]
+godot --path . -- --shot=out.png [--home | --kitchen | --bedroom | --yourhouse | --okafor | --street | --lot | --busstop | --cat | --car | --crash | --van | --road | --flash | --decon | --help | --memorial | --wires | --shelter | --millroad | --garage | --shop | --backroom | --allotments | --greenhouse | --sheds | --crossing | --carriage | --cab | --signalbox | --no7 | --board | --station | --fire | --cabin | --trailhead | --lanterns | --towerroad | --tower | --hut | --names | --canal | --lock | --flood | --floodtop | --cottage | --bridge | --junction | --clinic | --campfire | --bedroom2 | --radiotable | --catfire | --platform | --platformsouth | --forest | --yards | --backyards] [--gallery] [--wren] [--ines] [--onair] [--catbed | --catradio | --catstation] [--pause | --settings] [--drained] [--grace] [--reunion] [--lit] [--open] [--found] [--map] [--toasts] [--third | --face [--close]] [--dusk | --night] [--torch] [--tuning] [--journal | --backpack] [--rain | --ashfall] [--candles] [--title]
 godot --path . -- --selftest   # presses E on a few things, runs the Mill Road tool chain, saves, prints what happens
 godot --path . -- --loadtest   # loads that save and prints it
 ```

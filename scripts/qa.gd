@@ -23,6 +23,9 @@ const BOUNDS := [
 	[-24.0, 24.0, -427.5, -374.0],    # the Ranger Station
 	[-2.4, 2.4, -470.5, -427.0],      # the tower road
 	[-20.0, 20.0, -510.0, -470.0],    # the tower clearing
+	[-460.0, -340.0, -400.5, -395.5], # the towpath
+	[-436.5, -423.5, -396.0, -385.5], # Alf's cottage garden
+	[-425.0, -375.0, -722.0, -676.0], # Hollow Junction camp
 ]
 
 ## Where the wanderers start: [name, position].
@@ -37,6 +40,11 @@ const STARTS := [
 	["station yard", Vector3(4, 0.1, -405)],
 	["tower", Vector3(0, 0.1, -478)],
 	["hut", Vector3(-4, 0.1, -496)],
+	["canal west", Vector3(-455, 0.1, -398)],
+	["cottage", Vector3(-430, 0.1, -390)],
+	["canal east", Vector3(-350, 0.1, -398)],
+	["junction", Vector3(-400, 0.1, -683)],
+	["clinic", Vector3(-410, 0.1, -694)],
 ]
 
 var game: Node

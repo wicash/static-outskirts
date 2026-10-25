@@ -14,6 +14,7 @@ const Wren := preload("res://scripts/wren.gd")
 const Trail := preload("res://scripts/trail.gd")
 const LockedDoor := preload("res://scripts/locked_door.gd")
 const Trees := preload("res://scripts/trees.gd")
+const Canal := preload("res://scripts/canal.gd")
 
 const ORIGIN := Vector3(0, 0, -400)
 ## Where you arrive from the trail, and which way you face.
@@ -49,6 +50,7 @@ func build() -> void:
 	_yard()
 	_trailhead()
 	_tower_road()
+	_canal_path()
 	_trees()
 	_ash()
 
@@ -364,6 +366,22 @@ func _tower_road() -> void:
 			k.box(root, Vector3(22.5, 0.015, 0.015), Vector3(s * 12.75, y, -16), Color(0.55, 0.55, 0.52))
 
 
+## The path west to the canal (canal.gd). You need Wren's map to find it.
+func _canal_path() -> void:
+	var t: StaticBody3D = k.thing(root, Vector3(0.8, 2.2, 3.0), Vector3(-23.3, 1.1, 6), "Take the path to the canal", [], Trail)
+	t.needs = "canal_map"
+	t.needs_line = "A deer track into the trees, heading west. Wren says it goes to the canal eventually, but it splits every fifty metres. You'd want her map."
+	t.destination = Canal.ARRIVE
+	t.facing = -PI / 2.0
+	t.arrive_line = "An hour west through the woods on Wren's map, and then the trees open onto water: the old canal, brown and still, and a towpath heading east."
+	t.set_meta("area", "station")
+	k.box(root, Vector3(6, 0.03, 1.4), Vector3(-20.5, 0.02, 6), PATH)
+	var sign := k.group(root, Vector3(-21.5, 0, 7.6), 0)
+	k.box(sign, Vector3(0.1, 1.8, 0.1), Vector3(0, 0.9, 0), Kit.WOOD_DARK)
+	k.box(sign, Vector3(1.1, 0.25, 0.04), Vector3(-0.3, 1.6, 0), Kit.WOOD_LIGHT, {"rot": Vector3(0, 0, -5)})
+	k.words(sign, "< CANAL", Vector3(-0.3, 1.6, 0.03), Vector3(0, 0, -5), 0.005, Color(0.2, 0.15, 0.1))
+
+
 func _trees() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 23
@@ -371,7 +389,7 @@ func _trees() -> void:
 	while placed < 130:
 		var p := Vector3(rng.randf_range(-44, 44), 0, rng.randf_range(-44, 44))
 		var r := Vector2(p.x, p.z - 2).length()
-		if r < 14.0 or (absf(p.x) < 3.0 and absf(p.z) > 14):
+		if r < 14.0 or (absf(p.x) < 3.0 and absf(p.z) > 14) or (p.x < -12.0 and absf(p.z - 6.0) < 3.0):
 			continue
 		placed += 1
 		var tall := rng.randf_range(8, 17)

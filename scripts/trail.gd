@@ -10,6 +10,8 @@ var hours := 1.0           # how long the walk takes
 
 func interact() -> String:
 	var game := get_tree().get_first_node_in_group("game")
+	if game and needs != "" and not game.has_item(needs):
+		return needs_line
 	if game:
 		game.travel(destination, facing, arrive_line, hours)
 	return ""

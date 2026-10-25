@@ -59,7 +59,7 @@ const TOPICS := {
 		"\"She did. Took her two nights to say it.\" Wren unhooks a brass key from her belt and folds your hand round it. \"'If it's really her, send her up. Tell her to come at night. I'll be on air.'\" She holds on a moment longer. \"Go gently, Sam. She hasn't had a visitor in ninety days.\"",
 		"Ines said yes. Wren gave me the key to the tower road gate. \"Come at night. I'll be on air.\""],
 	"junction": ["The way to the junction",
-		"\"Course you're going. I'd go.\" She spreads her map on her knees. \"The overpass is down, so it's the old canal path. Lock gates are chained and the towpath floods, mind.\" She taps a blue pin. \"I'll radio Grace tonight. She'll meet you halfway.\" Then, softer: \"Not tonight, though. Tonight you sleep.\"",
+		"\"Course you're going. I'd go.\" She spreads her map on her knees. \"The overpass is down, so it's the old canal path. Lock gates are chained and the towpath floods, mind.\" She taps a blue pin, then copies the whole route onto the back of a ration box for you. \"I'll radio Grace tonight. She'll meet you at the far end.\" Then, softer: \"Not tonight, though. Tonight you sleep.\"",
 		"Wren says the long way to the junction camp is the old canal path. She's radioing Grace to meet me halfway. Next: the canal."],
 }
 

@@ -59,6 +59,7 @@ static func save(game: Node) -> void:
 		"harvest": harvest, "tried": tried,
 		"wren": _wren_state(tree),
 		"ines": _ines_state(tree),
+		"npcs": _npc_state(tree),
 		"bowl_day": bowl.fed_day if bowl else -1,
 		"tea_day": kettle.tea_day if kettle else -1,
 	}
@@ -71,6 +72,14 @@ static func _wren_state(tree: SceneTree) -> Dictionary:
 	if w == null:
 		return {}
 	return {"met": w.met, "topics": w.topics, "errands": w.errands, "tower_day": w.tower_day}
+
+
+static func _npc_state(tree: SceneTree) -> Dictionary:
+	var out := {}
+	for n in tree.get_nodes_in_group("npc"):
+		# Grace is in two places; each keeps its own state.
+		out[n.id + "@" + key(n)] = {"met": n.met, "topics": n.topics}
+	return out
 
 
 static func _ines_state(tree: SceneTree) -> Dictionary:
@@ -133,6 +142,13 @@ static func load_into(game: Node) -> bool:
 	if ines and not ins.is_empty():
 		ines.met = bool(ins.met)
 		ines.topics = Array(ins.topics)
+	var npcs: Dictionary = data.get("npcs", {})
+	for n in tree.get_nodes_in_group("npc"):
+		var st: Dictionary = npcs.get(n.id + "@" + key(n), {})
+		if not st.is_empty():
+			n.met = bool(st.met)
+			n.topics = Array(st.topics)
+			n.after_load()
 	var tried: Array = data.get("tried", [])
 	for l in tree.get_nodes_in_group("lock"):
 		l.tried = key(l) in tried

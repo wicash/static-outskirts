@@ -2,7 +2,7 @@
 extends RefCounted
 
 ## Items that open new places. They get a gold toast when found.
-const KEY_ITEMS := ["crowbar", "bolt_cutters", "antenna", "walkie", "walkman", "tape", "tower_key"]
+const KEY_ITEMS := ["crowbar", "bolt_cutters", "antenna", "walkie", "walkman", "tape", "tower_key", "canal_map", "windlass", "mum_blanket"]
 
 const ITEMS := {
 	"cat_food": ["Tin of cat food", "Fish in jelly. Biscuit's favourite, according to Grace."],
@@ -27,6 +27,9 @@ const ITEMS := {
 	"water": ["Bottled water", "Sealed. Tastes of plastic and safety."],
 	"seeds": ["Seed packets", "Runner beans and marigolds. Something to plant, one day."],
 	"tower_key": ["Wren's key", "A brass key on a bootlace. TOWER ROAD, in Wren's writing."],
+	"canal_map": ["Wren's canal map", "Drawn on the back of a ration box: the canal path from the station to the junction, with the lock circled. \"Paddles - chained? Windlass at Alf's.\""],
+	"windlass": ["Windlass", "An L-shaped iron handle for winding lock paddles. ALF is scratched into it."],
+	"mum_blanket": ["Mum's blanket", "Patchwork, knitted by the whole camp. It smells of woodsmoke and Mum."],
 	"rations": ["Ranger ration pack", "Oats, dried fruit, a chocolate bar. A note: \"Eat the chocolate first.\""],
 }
 
